@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ollama GUI - Local LLM Manager</title>
+    <style>
+        :root {
+            /* Light theme colors */
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8f9fa;
+            --bg-tertiary: #ffffff;
+            --border-color: #e9ecef;
+            --text-primary: #212529;
+            --text-secondary: #6c757d;
+            --text-muted: #6c757d;
+            --accent-color: #495057;
+            --accent-hover: #212529;
+            --message-bg: #f8f9fa;
+            --input-bg: #ffffff;
+            --shadow-color: rgba(0, 0, 0, 0.1);
+        }
+
+        [data-theme="dark"] {
+            /* Dark theme colors */
+            --bg-primary: #1a1a1a;
+            --bg-secondary: #2d2d2d;
+            --bg-tertiary: #3a3a3a;
+            --border-color: #404040;
+            --text-primary: #e9ecef;
+            --text-secondary: #adb5bd;
+            --text-muted: #6c757d;
+            --accent-color: #6c757d;
+            --accent-hover: #adb5bd;
+            --message-bg: #2d2d2d;
+            --input-bg: #3a3a3a;
+            --shadow-color: rgba(255, 255, 255, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            height: 100vh;
+            overflow: hidden;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .sidebar {
+            width: 300px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--text-primary);
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-secondary);
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.connected {
+            background: var(--accent-color);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .models-section {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--text-secondary);
+        }
+
+        .model-item {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .model-item:hover {
+            background: var(--bg-secondary);
+            border-color: var(--text-secondary);
+            transform: translateY(-2px);
+        }
+
+        .model-item.active {
+            background: var(--message-bg);
+            border-color: var(--accent-color);
+        }
+
+        .model-name {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .model-size {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            padding: 15px 25px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .model-selector {
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 8px 12px;
+            color: var(--text-primary);
+            font-size: 14px;
+            outline: none;
+            min-width: 200px;
+        }
+
+        .btn {
+            background: var(--accent-color);
+            border: none;
+            border-radius: 6px;
+            padding: 8px 16px;
+            color: white;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        .btn:hover {
+            background: var(--accent-hover);
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            background: var(--text-secondary);
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--accent-color);
+        }
+
+        .theme-toggle {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 8px;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            outline: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 36px;
+        }
+
+        .theme-toggle:hover {
+            background: var(--bg-secondary);
+            transform: translateY(-2px);
+        }
+
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 25px;
+            overflow: hidden;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .role-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .role-badge.user {
+            background: var(--message-bg);
+            color: var(--accent-color);
+        }
+
+        .role-badge.assistant {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        .message-content {
+            background: var(--message-bg);
+            border-radius: 8px;
+            padding: 15px;
+            border-left: 3px solid var(--text-secondary);
+        }
+
+        .input-area {
+            display: flex;
+            gap: 15px;
+            align-items: flex-end;
+        }
+
+        .input-group {
+            flex: 1;
+            position: relative;
+        }
+
+        .message-input {
+            width: 100%;
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 15px;
+            color: var(--text-primary);
+            font-size: 14px;
+            resize: none;
+            outline: none;
+            min-height: 60px;
+            max-height: 120px;
+            transition: all 0.3s ease;
+        }
+
+        .message-input:focus {
+            border-color: var(--text-secondary);
+            box-shadow: 0 0 0 3px var(--shadow-color);
+        }
+
+        .message-input::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .image-upload-area {
+            border: 2px dashed var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .image-upload-area:hover {
+            border-color: var(--text-secondary);
+            background: var(--bg-secondary);
+        }
+
+        .image-upload-area.dragover {
+            border-color: var(--accent-color);
+            background: var(--message-bg);
+        }
+
+        .uploaded-image {
+            max-width: 200px;
+            max-height: 150px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 15px;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border-color);
+            border-top: 2px solid var(--text-secondary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+        }
+
+        .modal-header {
+            margin-bottom: 20px;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .form-input {
+            width: 100%;
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 10px;
+            color: var(--text-primary);
+            font-size: 14px;
+            outline: none;
+        }
+
+        .form-input:focus {
+            border-color: var(--text-secondary);
+            box-shadow: 0 0 0 3px var(--shadow-color);
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .error {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 10px;
+            color: var(--accent-color);
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        .success {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 10px;
+            color: var(--text-primary);
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        .settings-panel {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .settings-row {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+
+        .settings-label {
+            min-width: 100px;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .slider {
+            flex: 1;
+            height: 4px;
+            background: var(--border-color);
+            border-radius: 2px;
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: var(--text-secondary);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .slider-value {
+            min-width: 40px;
+            text-align: right;
+            font-size: 12px;
+            color: var(--text-primary);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                height: auto;
+            }
+
+            .models-section {
+                max-height: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">Ollama GUI</div>
+                <div class="status-indicator">
+                    <div class="status-dot" id="statusDot"></div>
+                    <span id="statusText">Connecting...</span>
+                </div>
+            </div>
+
+            <div class="models-section">
+                <div class="section-title">Available Models</div>
+                <div id="modelsList"></div>
+                <button class="btn" id="pullModelBtn" style="width: 100%; margin-top: 15px;">
+                    Pull New Model
+                </button>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="header">
+                <select class="model-selector" id="modelSelector">
+                    <option value="">Select a model...</option>
+                </select>
+                <button class="btn btn-secondary" id="settingsBtn">Settings</button>
+                <button class="theme-toggle" id="themeToggle" title="Toggle dark/light mode">
+                    🌙
+                </button>
+                <button class="btn" id="clearChatBtn">Clear Chat</button>
+            </div>
+
+            <div class="chat-container">
+                <div class="settings-panel" id="settingsPanel" style="display: none;">
+                    <div class="settings-row">
+                        <span class="settings-label">Temperature</span>
+                        <input type="range" class="slider" id="temperatureSlider" min="0" max="2" step="0.1" value="0.8">
+                        <span class="slider-value" id="temperatureValue">0.8</span>
+                    </div>
+                    <div class="settings-row">
+                        <span class="settings-label">Top P</span>
+                        <input type="range" class="slider" id="topPSlider" min="0" max="1" step="0.05" value="0.9">
+                        <span class="slider-value" id="topPValue">0.9</span>
+                    </div>
+                    <div class="settings-row">
+                        <span class="settings-label">Max Tokens</span>
+                        <input type="range" class="slider" id="maxTokensSlider" min="50" max="4000" step="50" value="2000">
+                        <span class="slider-value" id="maxTokensValue">2000</span>
+                    </div>
+                </div>
+
+                <div class="image-upload-area" id="imageUploadArea">
+                    <div>📷 Click or drag images here for vision models</div>
+                    <input type="file" id="imageInput" accept="image/*" style="display: none;">
+                    <div id="imagePreview"></div>
+                </div>
+
+                <div class="chat-messages" id="chatMessages">
+                    <div class="message">
+                        <div class="message-header">
+                            <div class="role-badge assistant">Assistant</div>
+                        </div>
+                        <div class="message-content">
+                            Welcome to Ollama GUI! Select a model from the dropdown above to start chatting. You can also upload images when using vision-enabled models like LLaVA.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="input-area">
+                    <div class="input-group">
+                        <textarea
+                            class="message-input"
+                            id="messageInput"
+                            placeholder="Type your message here... (Shift+Enter for new line)"
+                            rows="3"
+                        ></textarea>
+                    </div>
+                    <button class="btn" id="sendBtn">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pull Model Modal -->
+    <div class="modal" id="pullModelModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Pull New Model</div>
+                <div style="color: #6c757d; font-size: 14px;">Enter the name of the model you want to download</div>
+            </div>
+            <div id="pullModelError"></div>
+            <div class="form-group">
+                <label class="form-label">Model Name</label>
+                <input type="text" class="form-input" id="modelNameInput" placeholder="e.g., llama2, mistral, llava">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="cancelPullBtn">Cancel</button>
+                <button class="btn" id="confirmPullBtn">Pull Model</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Setup Instructions Modal -->
+    <div class="modal" id="setupModal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <div class="modal-title">🔧 Setup Required</div>
+                <div style="color: #6c757d; font-size: 14px;">Connection to Ollama failed - follow these steps to get started</div>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <h4 style="margin-bottom: 10px; color: #212529;">Option 1: Enable CORS in Ollama (Recommended)</h4>
+                <p style="margin-bottom: 10px; color: #6c757d;">Set the CORS environment variable and restart Ollama:</p>
+
+                <div style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 15px; margin-bottom: 15px;">
+                    <strong>Windows (Command Prompt):</strong><br>
+                    <code style="background: #e9ecef; padding: 2px 4px; border-radius: 3px;">set OLLAMA_ORIGINS=*</code><br>
+                    <code style="background: #e9ecef; padding: 2px 4px; border-radius: 3px;">ollama serve</code>
+                </div>
+
+                <div style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 15px; margin-bottom: 15px;">
+                    <strong>Windows (PowerShell):</strong><br>
+                    <code style="background: #e9ecef; padding: 2px 4px; border-radius: 3px;">$env:OLLAMA_ORIGINS="*"</code><br>
+                    <code style="background: #e9ecef; padding: 2px 4px; border-radius: 3px;">ollama serve</code>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <h4 style="margin-bottom: 10px; color: #212529;">Option 2: Use Local Web Server</h4>
+                <p style="margin-bottom: 10px; color: #6c757d;">Serve this file through a local web server instead of opening it directly:</p>
+
+                <div style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 15px;">
+                    <code style="background: #e9ecef; padding: 2px 4px; border-radius: 3px;">python -m http.server 8080</code><br>
+                    <small style="color: #6c757d;">Then open: http://localhost:8080/ollama_gui.html</small>
+                </div>
+            </div>
+
+            <div style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 15px; margin-bottom: 20px;">
+                <strong>💡 Why this happens:</strong><br>
+                <small style="color: #6c757d;">Web browsers block requests from file:// URLs to localhost for security. This is called CORS (Cross-Origin Resource Sharing) protection.</small>
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn" id="closeSetupBtn" onclick="ollamaGUI.hideSetupModal()">Got it!</button>
+                <button class="btn btn-secondary" onclick="location.reload()">Retry Connection</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class OllamaGUI {
+            constructor() {
+                this.baseURL = 'http://localhost:11434';
+                this.selectedModel = '';
+                this.currentImage = null;
+                this.messages = [];
+                this.settings = {
+                    temperature: 0.8,
+                    top_p: 0.9,
+                    max_tokens: 2000
+                };
+                this.isDarkMode = localStorage.getItem('darkMode') === 'true';
+
+                this.init();
+            }
+
+            async init() {
+                this.bindEvents();
+                this.setupSliders();
+                this.initTheme();
+                await this.checkConnection();
+                await this.loadModels();
+            }
+
+            bindEvents() {
+                // Send message
+                document.getElementById('sendBtn').addEventListener('click', () => this.sendMessage());
+                document.getElementById('messageInput').addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        this.sendMessage();
+                    }
+                });
+
+                // Model selection
+                document.getElementById('modelSelector').addEventListener('change', (e) => {
+                    this.selectedModel = e.target.value;
+                    console.log('Selected model:', this.selectedModel);
+                });
+
+                // Clear chat
+                document.getElementById('clearChatBtn').addEventListener('click', () => this.clearChat());
+
+                // Settings toggle
+                document.getElementById('settingsBtn').addEventListener('click', () => {
+                    const panel = document.getElementById('settingsPanel');
+                    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+                });
+
+                // Pull model modal
+                document.getElementById('pullModelBtn').addEventListener('click', () => this.showPullModal());
+                document.getElementById('cancelPullBtn').addEventListener('click', () => this.hidePullModal());
+                document.getElementById('confirmPullBtn').addEventListener('click', () => this.pullModel());
+
+                // Theme toggle
+                document.getElementById('themeToggle').addEventListener('click', () => this.toggleTheme());
+
+                // Image upload
+                const uploadArea = document.getElementById('imageUploadArea');
+                const imageInput = document.getElementById('imageInput');
+
+                uploadArea.addEventListener('click', () => imageInput.click());
+                uploadArea.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    uploadArea.classList.add('dragover');
+                });
+                uploadArea.addEventListener('dragleave', () => {
+                    uploadArea.classList.remove('dragover');
+                });
+                uploadArea.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    uploadArea.classList.remove('dragover');
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0) this.handleImageUpload(files[0]);
+                });
+
+                imageInput.addEventListener('change', (e) => {
+                    if (e.target.files.length > 0) this.handleImageUpload(e.target.files[0]);
+                });
+            }
+
+            setupSliders() {
+                const sliders = [
+                    { id: 'temperatureSlider', valueId: 'temperatureValue', setting: 'temperature' },
+                    { id: 'topPSlider', valueId: 'topPValue', setting: 'top_p' },
+                    { id: 'maxTokensSlider', valueId: 'maxTokensValue', setting: 'max_tokens' }
+                ];
+
+                sliders.forEach(({ id, valueId, setting }) => {
+                    const slider = document.getElementById(id);
+                    const valueDisplay = document.getElementById(valueId);
+
+                    slider.addEventListener('input', (e) => {
+                        const value = parseFloat(e.target.value);
+                        this.settings[setting] = value;
+                        valueDisplay.textContent = value;
+                    });
+                });
+            }
+
+            async checkConnection() {
+                try {
+                    const response = await fetch(`${this.baseURL}/api/version`);
+                    if (response.ok) {
+                        document.getElementById('statusDot').classList.add('connected');
+                        document.getElementById('statusText').textContent = 'Connected';
+                    } else {
+                        throw new Error('Connection failed');
+                    }
+                } catch (error) {
+                    document.getElementById('statusText').textContent = 'Disconnected';
+
+                    // Check if it's a CORS error
+                    if (error.message.includes('CORS') || error.name === 'TypeError') {
+                        this.showSetupInstructions();
+                    } else {
+                        this.showError('Failed to connect to Ollama. Make sure Ollama is running on localhost:11434');
+                    }
+                }
+            }
+
+            async loadModels() {
+                try {
+                    const response = await fetch(`${this.baseURL}/api/tags`);
+                    const data = await response.json();
+
+                    const modelsList = document.getElementById('modelsList');
+                    const modelSelector = document.getElementById('modelSelector');
+
+                    modelsList.innerHTML = '';
+                    modelSelector.innerHTML = '<option value="">Select a model...</option>';
+
+                    if (data.models && data.models.length > 0) {
+                        data.models.forEach(model => {
+                            // Add to sidebar
+                            const modelItem = document.createElement('div');
+                            modelItem.className = 'model-item';
+                            modelItem.innerHTML = `
+                                <div class="model-name">${model.name}</div>
+                                <div class="model-size">${this.formatSize(model.size)}</div>
+                            `;
+                            modelItem.addEventListener('click', () => {
+                                document.querySelectorAll('.model-item').forEach(item => item.classList.remove('active'));
+                                modelItem.classList.add('active');
+                                this.selectedModel = model.name;
+                                modelSelector.value = model.name;
+                                console.log('Selected model:', this.selectedModel);
+                            });
+                            modelsList.appendChild(modelItem);
+
+                            // Add to selector
+                            const option = document.createElement('option');
+                            option.value = model.name;
+                            option.textContent = model.name;
+                            modelSelector.appendChild(option);
+                        });
+                    } else {
+                        modelsList.innerHTML = '<div style="text-align: center; color: #6b7280;">No models available. Pull a model to get started.</div>';
+                    }
+                } catch (error) {
+                    this.showError('Failed to load models');
+                }
+            }
+
+            formatSize(bytes) {
+                const sizes = ['B', 'KB', 'MB', 'GB'];
+                if (bytes === 0) return '0 B';
+                const i = Math.floor(Math.log(bytes) / Math.log(1024));
+                return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
+            }
+
+            async sendMessage() {
+                const input = document.getElementById('messageInput');
+                const message = input.value.trim();
+
+                if (!message && !this.currentImage) return;
+                if (!this.selectedModel) {
+                    this.showError('Please select a model first');
+                    return;
+                }
+
+                const sendBtn = document.getElementById('sendBtn');
+                sendBtn.disabled = true;
+                sendBtn.textContent = 'Sending...';
+
+                // Add user message to chat
+                this.addMessage('user', message, this.currentImage);
+                input.value = '';
+
+                // Show loading indicator
+                const loadingDiv = document.createElement('div');
+                loadingDiv.className = 'loading';
+                loadingDiv.innerHTML = '<div class="spinner"></div><span>Thinking...</span>';
+                document.getElementById('chatMessages').appendChild(loadingDiv);
+
+                try {
+                    const messageData = {
+                        role: 'user',
+                        content: message
+                    };
+
+                    if (this.currentImage) {
+                        messageData.images = [this.currentImage.split(',')[1]]; // Remove data URL prefix
+                    }
+
+                    this.messages.push(messageData);
+
+                    const response = await fetch(`${this.baseURL}/api/chat`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            model: this.selectedModel,
+                            messages: this.messages,
+                            stream: false,
+                            options: {
+                                temperature: this.settings.temperature,
+                                top_p: this.settings.top_p,
+                                num_predict: this.settings.max_tokens
+                            }
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+
+                    // Remove loading indicator
+                    loadingDiv.remove();
+
+                    // Add assistant response
+                    const assistantMessage = data.message.content;
+                    this.addMessage('assistant', assistantMessage);
+                    this.messages.push({
+                        role: 'assistant',
+                        content: assistantMessage
+                    });
+
+                    // Clear image after sending
+                    this.clearImage();
+
+                } catch (error) {
+                    loadingDiv.remove();
+                    this.showError(`Failed to send message: ${error.message}`);
+                } finally {
+                    sendBtn.disabled = false;
+                    sendBtn.textContent = 'Send';
+                }
+            }
+
+            addMessage(role, content, image = null) {
+                const messagesContainer = document.getElementById('chatMessages');
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'message';
+
+                let imageHtml = '';
+                if (image) {
+                    imageHtml = `<img src="${image}" alt="Uploaded image" class="uploaded-image" style="display: block; margin: 10px 0;">`;
+                }
+
+                messageDiv.innerHTML = `
+                    <div class="message-header">
+                        <div class="role-badge ${role}">${role === 'user' ? 'You' : 'Assistant'}</div>
+                    </div>
+                    <div class="message-content">
+                        ${imageHtml}
+                        ${content.replace(/\n/g, '<br>')}
+                    </div>
+                `;
+
+                messagesContainer.appendChild(messageDiv);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+
+            clearChat() {
+                this.messages = [];
+                const messagesContainer = document.getElementById('chatMessages');
+                messagesContainer.innerHTML = `
+                    <div class="message">
+                        <div class="message-header">
+                            <div class="role-badge assistant">Assistant</div>
+                        </div>
+                        <div class="message-content">
+                            Chat cleared! Ready for a new conversation.
+                        </div>
+                    </div>
+                `;
+            }
+
+            handleImageUpload(file) {
+                if (!file.type.startsWith('image/')) {
+                    this.showError('Please select an image file');
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    this.currentImage = e.target.result;
+                    const preview = document.getElementById('imagePreview');
+                    preview.innerHTML = `
+                        <img src="${this.currentImage}" alt="Preview" class="uploaded-image">
+                        <button class="btn btn-secondary" onclick="ollamaGUI.clearImage()" style="margin-top: 10px;">Remove Image</button>
+                    `;
+                };
+                reader.readAsDataURL(file);
+            }
+
+            clearImage() {
+                this.currentImage = null;
+                document.getElementById('imagePreview').innerHTML = '';
+                document.getElementById('imageInput').value = '';
+            }
+
+            showPullModal() {
+                document.getElementById('pullModelModal').style.display = 'flex';
+            }
+
+            hidePullModal() {
+                document.getElementById('pullModelModal').style.display = 'none';
+                document.getElementById('modelNameInput').value = '';
+                document.getElementById('pullModelError').innerHTML = '';
+            }
+
+            async pullModel() {
+                const modelName = document.getElementById('modelNameInput').value.trim();
+                if (!modelName) {
+                    document.getElementById('pullModelError').innerHTML = '<div class="error">Please enter a model name</div>';
+                    return;
+                }
+
+                const confirmBtn = document.getElementById('confirmPullBtn');
+                confirmBtn.disabled = true;
+                confirmBtn.textContent = 'Pulling...';
+
+                try {
+                    const response = await fetch(`${this.baseURL}/api/pull`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            name: modelName
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    // Handle streaming response
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+
+                    while (true) {
+                        const { value, done } = await reader.read();
+                        if (done) break;
+
+                        const chunk = decoder.decode(value);
+                        const lines = chunk.split('\n').filter(line => line.trim());
+
+                        for (const line of lines) {
+                            try {
+                                const data = JSON.parse(line);
+                                if (data.status) {
+                                    confirmBtn.textContent = data.status;
+                                }
+                                if (data.error) {
+                                    throw new Error(data.error);
+                                }
+                            } catch (parseError) {
+                                // Ignore JSON parse errors for partial chunks
+                            }
+                        }
+                    }
+
+                    document.getElementById('pullModelError').innerHTML = '<div class="success">Model pulled successfully!</div>';
+                    setTimeout(() => {
+                        this.hidePullModal();
+                        this.loadModels(); // Refresh models list
+                    }, 2000);
+
+                } catch (error) {
+                    document.getElementById('pullModelError').innerHTML = `<div class="error">Failed to pull model: ${error.message}</div>`;
+                } finally {
+                    confirmBtn.disabled = false;
+                    confirmBtn.textContent = 'Pull Model';
+                }
+            }
+
+            showError(message) {
+                // Create temporary error notification
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'error';
+                errorDiv.textContent = message;
+                errorDiv.style.position = 'fixed';
+                errorDiv.style.top = '20px';
+                errorDiv.style.right = '20px';
+                errorDiv.style.zIndex = '1001';
+                errorDiv.style.maxWidth = '300px';
+
+                document.body.appendChild(errorDiv);
+
+                setTimeout(() => {
+                    errorDiv.remove();
+                }, 5000);
+            }
+
+            showSuccess(message) {
+                // Create temporary success notification
+                const successDiv = document.createElement('div');
+                successDiv.className = 'success';
+                successDiv.textContent = message;
+                successDiv.style.position = 'fixed';
+                successDiv.style.top = '20px';
+                successDiv.style.right = '20px';
+                successDiv.style.zIndex = '1001';
+                successDiv.style.maxWidth = '300px';
+
+                document.body.appendChild(successDiv);
+
+                setTimeout(() => {
+                    successDiv.remove();
+                }, 3000);
+            }
+
+            showSetupInstructions() {
+                document.getElementById('setupModal').style.display = 'flex';
+            }
+
+            hideSetupModal() {
+                document.getElementById('setupModal').style.display = 'none';
+            }
+
+            initTheme() {
+                this.applyTheme();
+            }
+
+            toggleTheme() {
+                this.isDarkMode = !this.isDarkMode;
+                localStorage.setItem('darkMode', this.isDarkMode.toString());
+                this.applyTheme();
+            }
+
+            applyTheme() {
+                const body = document.body;
+                const themeToggle = document.getElementById('themeToggle');
+
+                if (this.isDarkMode) {
+                    body.setAttribute('data-theme', 'dark');
+                    themeToggle.textContent = '☀️';
+                    themeToggle.title = 'Switch to light mode';
+                } else {
+                    body.removeAttribute('data-theme');
+                    themeToggle.textContent = '🌙';
+                    themeToggle.title = 'Switch to dark mode';
+                }
+            }
+        }
+
+        // Initialize the application
+        let ollamaGUI;
+        document.addEventListener('DOMContentLoaded', () => {
+            ollamaGUI = new OllamaGUI();
+            console.log('Selected model:', ollamaGUI.selectedModel);
+        });
+
+        // Handle modal clicks outside content
+        document.addEventListener('click', (e) => {
+            const pullModal = document.getElementById('pullModelModal');
+            const setupModal = document.getElementById('setupModal');
+
+            if (e.target === pullModal) {
+                pullModal.style.display = 'none';
+            }
+            if (e.target === setupModal) {
+                setupModal.style.display = 'none';
+            }
+        });
+
+        // Handle escape key for modals
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const pullModal = document.getElementById('pullModelModal');
+                const setupModal = document.getElementById('setupModal');
+
+                if (pullModal.style.display === 'flex') {
+                    pullModal.style.display = 'none';
+                }
+                if (setupModal.style.display === 'flex') {
+                    setupModal.style.display = 'none';
+                }
+            }
+        });
+
+        // Auto-resize textarea
+        document.addEventListener('DOMContentLoaded', () => {
+            const textarea = document.getElementById('messageInput');
+            textarea.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+            });
+        });
+    </script>
+</body>
+</html>
