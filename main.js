@@ -1,6 +1,8 @@
-const { app, BrowserWindow, Menu, shell, dialog } = require('electron');
+const { app, BrowserWindow, Menu, shell, dialog, ipcMain } = require('electron');
 const { exec } = require('child_process');
 const path = require('path');
+const os = require('os');
+const si = require('systeminformation');
 
 let mainWindow;
 let isQuitting = false; // Flag to prevent infinite loop
@@ -21,8 +23,9 @@ function createWindow() {
     minWidth: 800,
     minHeight: 600,
     webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js'),
       webSecurity: false // Allows CORS for Ollama API
     },
     icon: path.join(__dirname, 'assets', 'icon.png'), // Add icon if available
@@ -286,6 +289,93 @@ async function stopAllRunningModels() {
   }
 }
 
+async function getSystemMetrics() {
+  let cpuUsage = 0;
+
+  try {
+    // Use systeminformation for accurate CPU usage
+    const currentLoad = await si.currentLoad();
+    cpuUsage = Math.round(currentLoad.currentLoad);
+  } catch (err) {
+    console.error('CPU monitoring error:', err);
+    // Fallback to basic calculation if systeminformation fails
+    const cpus = os.cpus();
+    let totalIdle = 0;
+    let totalTick = 0;
+
+    cpus.forEach(cpu => {
+      for (const type in cpu.times) {
+        totalTick += cpu.times[type];
+      }
+      totalIdle += cpu.times.idle;
+    });
+
+    const idle = totalIdle / cpus.length;
+    const total = totalTick / cpus.length;
+    cpuUsage = Math.round(100 - (100 * idle / total));
+  }
+
+  // Memory usage - use systeminformation for more accurate data
+  let memoryUsage, memoryTotal;
+  try {
+    const memInfo = await si.mem();
+    memoryUsage = (memInfo.used / (1024 * 1024 * 1024)).toFixed(1); // GB
+    memoryTotal = (memInfo.total / (1024 * 1024 * 1024)).toFixed(1); // GB
+  } catch (err) {
+    console.error('Memory monitoring error:', err);
+    // Fallback to os module
+    const totalMem = os.totalmem();
+    const freeMem = os.freemem();
+    const usedMem = totalMem - freeMem;
+    memoryUsage = (usedMem / (1024 * 1024 * 1024)).toFixed(1); // GB
+    memoryTotal = (totalMem / (1024 * 1024 * 1024)).toFixed(1); // GB
+  }
+
+  // System load (1, 5, 15 minute averages)
+  const loadAvg = os.loadavg();
+
+  // Network monitoring with systeminformation - improved interface selection
+  let networkActivity = "N/A";
+  try {
+    const networkStats = await si.networkStats();
+
+    if (networkStats && networkStats.length > 0) {
+      // Find the best interface to monitor (active, external, non-virtual)
+      let primaryInterface = networkStats.find(stat => {
+        // Look for interfaces with actual activity or known good names
+        return stat.iface &&
+               !stat.iface.toLowerCase().includes('loopback') &&
+               !stat.iface.toLowerCase().includes('virtual') &&
+               (stat.rx_sec > 0 || stat.tx_sec > 0 ||
+                stat.iface.toLowerCase().includes('wi-fi') ||
+                stat.iface.toLowerCase().includes('ethernet'));
+      });
+
+      // Fallback to first interface if no ideal one found
+      if (!primaryInterface && networkStats[0]) {
+        primaryInterface = networkStats[0];
+      }
+
+      if (primaryInterface) {
+        // Use built-in rates from systeminformation (more accurate)
+        const totalBytesPerSec = primaryInterface.rx_sec + primaryInterface.tx_sec;
+        const totalKBps = (totalBytesPerSec / 1024).toFixed(1);
+        networkActivity = `${totalKBps} KB/s`;
+      }
+    }
+  } catch (err) {
+    console.error('Network monitoring error:', err);
+  }
+
+  return {
+    cpuUsage,
+    memoryUsage,
+    memoryTotal,
+    systemLoad: loadAvg[0].toFixed(2),
+    networkActivity
+  };
+}
+
 // App event handlers
 app.whenReady().then(() => {
   createWindow();
@@ -296,6 +386,10 @@ app.whenReady().then(() => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();
     }
+  });
+
+  ipcMain.handle('get-system-metrics', async () => {
+    return getSystemMetrics();
   });
 });
 

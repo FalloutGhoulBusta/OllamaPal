@@ -4,37 +4,45 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ollama GUI - Local LLM Manager</title>
+    <!-- Marked.js for Markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
+    <!-- Chart.js for performance charts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <style>
         :root {
-            /* Light theme colors */
-            --bg-primary: #ffffff;
-            --bg-secondary: #f8f9fa;
-            --bg-tertiary: #ffffff;
-            --border-color: #e9ecef;
-            --text-primary: #212529;
-            --text-secondary: #6c757d;
-            --text-muted: #6c757d;
-            --accent-color: #495057;
-            --accent-hover: #212529;
-            --message-bg: #f8f9fa;
+            /* Maple Light Theme - Warm autumn colors */
+            --bg-primary: #fef9f3;
+            --bg-secondary: #f4e6d7;
+            --bg-tertiary: #faf5f0;
+            --border-color: #e8d5c4;
+            --text-primary: #3c2415;
+            --text-secondary: #8b5a3c;
+            --text-muted: #a0724e;
+            --message-bg: #f7ede4;
             --input-bg: #ffffff;
-            --shadow-color: rgba(0, 0, 0, 0.1);
+            --shadow-color: rgba(255, 140, 66, 0.15);
+            --maple-red: #cc5500;
+            --maple-orange: #ff8c42;
+            --maple-yellow: #ffb347;
+            --maple-brown: #8b4513;
         }
 
         [data-theme="dark"] {
-            /* Dark theme colors */
-            --bg-primary: #1a1a1a;
-            --bg-secondary: #2d2d2d;
-            --bg-tertiary: #3a3a3a;
-            --border-color: #404040;
-            --text-primary: #e9ecef;
-            --text-secondary: #adb5bd;
-            --text-muted: #6c757d;
-            --accent-color: #6c757d;
-            --accent-hover: #adb5bd;
-            --message-bg: #2d2d2d;
-            --input-bg: #3a3a3a;
-            --shadow-color: rgba(255, 255, 255, 0.1);
+            /* Maple Dark Theme - Deep autumn night colors */
+            --bg-primary: #1a0f0a;
+            --bg-secondary: #2d1b13;
+            --bg-tertiary: #3a241a;
+            --border-color: #4a2c1a;
+            --text-primary: #f4e6d7;
+            --text-secondary: #d2b48c;
+            --text-muted: #a0724e;
+            --message-bg: #2d1b13;
+            --input-bg: #3a241a;
+            --shadow-color: rgba(255, 140, 66, 0.2);
+            --maple-red: #ff6b35;
+            --maple-orange: #ff8c42;
+            --maple-yellow: #ffb347;
+            --maple-brown: #8b4513;
         }
 
         * {
@@ -58,22 +66,68 @@
         }
 
         .sidebar {
-            width: 300px;
+            width: 60px; /* Collapsed width */
             background: var(--bg-secondary);
             border-right: 1px solid var(--border-color);
+            box-shadow: 1px 0 3px var(--shadow-color);
             display: flex;
             flex-direction: column;
+            transition: width 0.3s ease;
+            overflow: hidden;
+            position: relative;
+            z-index: 100;
+        }
+
+        .sidebar:hover {
+            width: 300px; /* Expanded width on hover */
+        }
+
+        .sidebar.expanded {
+            width: 300px; /* Force expanded state */
         }
 
         .sidebar-header {
             padding: 20px;
             border-bottom: 1px solid var(--border-color);
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-start;
+            transition: all 0.3s ease;
         }
 
         .logo {
-            font-size: 24px;
+            font-size: 20px;
             font-weight: bold;
             color: var(--text-primary);
+            white-space: nowrap;
+            transition: all 0.3s ease;
+        }
+
+        .logo-compact {
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+
+
+        /* When sidebar is collapsed, show compact logo */
+        .sidebar:not(:hover):not(.expanded) .logo {
+            opacity: 0;
+            transform: translateX(-20px);
+        }
+
+        .sidebar:not(:hover):not(.expanded) .logo-compact {
+            opacity: 1;
+        }
+
+        .sidebar:not(:hover):not(.expanded) .sidebar-header {
+            padding: 10px;
+            align-items: center;
         }
 
         .status-indicator {
@@ -82,29 +136,45 @@
             gap: 8px;
             margin-top: 10px;
             font-size: 14px;
+            transition: all 0.3s ease;
+            white-space: nowrap;
         }
 
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: var(--text-secondary);
-            animation: pulse 2s infinite;
+        /* Hide status text when collapsed */
+        .sidebar:not(:hover):not(.expanded) .status-indicator {
+            justify-content: center;
+            margin-top: 5px;
         }
 
-        .status-dot.connected {
-            background: var(--accent-color);
+        .sidebar:not(:hover):not(.expanded) .status-indicator span {
+            display: none;
         }
 
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+        .logo-compact svg {
+            width: 24px;
+            height: 24px;
+            fill: var(--text-primary);
+            transition: fill 0.3s ease, filter 0.3s ease;
+        }
+
+        .logo-compact svg.connected {
+            fill: var(--text-primary);
+        }
+
+        @keyframes svgGlow {
+            0%, 100% {
+                filter: none;
+            }
+            50% {
+                filter: drop-shadow(0 0 8px white) drop-shadow(0 0 16px white);
+            }
         }
 
         .models-section {
             flex: 1;
             padding: 20px;
             overflow-y: auto;
+            transition: all 0.3s ease;
         }
 
         .section-title {
@@ -112,16 +182,42 @@
             font-weight: 600;
             margin-bottom: 15px;
             color: var(--text-secondary);
+            white-space: nowrap;
+            transition: all 0.3s ease;
+        }
+
+        /* Collapsed models section styling - hide models */
+        .sidebar:not(:hover):not(.expanded) .models-section {
+            padding: 10px 5px;
+        }
+
+        /* Hide section title when collapsed */
+        .sidebar:not(:hover):not(.expanded) .section-title {
+            display: none;
         }
 
         .model-item {
             background: var(--bg-tertiary);
             border: 1px solid var(--border-color);
             border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 10px;
+            padding: 14px;
+            margin-bottom: 12px;
             cursor: pointer;
             transition: all 0.3s ease;
+            box-shadow: 0 2px 4px var(--shadow-color);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Collapsed model item styling - compact */
+        .sidebar:not(:hover):not(.expanded) .model-item {
+            padding: 8px 4px;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .model-item:hover {
@@ -132,24 +228,103 @@
 
         .model-item.active {
             background: var(--message-bg);
-            border-color: var(--accent-color);
+            border-color: var(--maple-orange);
+            box-shadow: 0 2px 6px var(--shadow-color);
+        }
+
+        /* Dark mode active model styling */
+        [data-theme="dark"] .model-item.active {
+            background: var(--bg-tertiary);
+            border-color: var(--maple-orange);
+            box-shadow: 0 2px 6px var(--shadow-color);
         }
 
         .model-name {
             font-weight: 600;
             font-size: 14px;
+            transition: all 0.3s ease;
+            white-space: nowrap;
         }
 
         .model-size {
             font-size: 12px;
             color: var(--text-secondary);
             margin-top: 4px;
+            transition: all 0.3s ease;
+        }
+
+        /* Hide models completely when collapsed */
+        .sidebar:not(:hover):not(.expanded) .model-item {
+            display: none;
+        }
+
+        .sidebar:not(:hover):not(.expanded) .model-size {
+            display: none;
+        }
+
+
+
+        /* Add compact model indicator for when models are visible */
+        .model-item::before {
+            content: '';
+            position: absolute;
+            left: 2px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 3px;
+            height: 20px;
+            background: var(--maple-orange);
+            border-radius: 2px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .model-item.active::before {
+            opacity: 1;
+        }
+
+        /* Sidebar toggle button */
+        .sidebar-toggle {
+            position: absolute;
+            top: 50%;
+            right: -15px;
+            transform: translateY(-50%);
+            width: 30px;
+            height: 60px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-left: none;
+            border-radius: 0 8px 8px 0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            z-index: 101;
+            box-shadow: 2px 0 4px var(--shadow-color);
+        }
+
+        .sidebar-toggle:hover {
+            background: var(--bg-tertiary);
+            border-color: var(--maple-orange);
+        }
+
+        .sidebar-toggle-icon {
+            font-size: 14px;
+            color: var(--text-secondary);
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar.expanded .sidebar-toggle-icon {
+            transform: rotate(180deg);
         }
 
         .main-content {
             flex: 1;
             display: flex;
             flex-direction: column;
+            min-height: 0; /* Allow flexbox to shrink */
+            overflow: hidden; /* Prevent content from overflowing */
         }
 
         .header {
@@ -159,21 +334,200 @@
             display: flex;
             align-items: center;
             gap: 15px;
+            box-shadow: 0 1px 3px var(--shadow-color);
         }
 
-        .model-selector {
-            background: var(--input-bg);
+        /* Tinted frosted glass effects - Maple themed */
+        .tinted-frost-dark {
+            background: rgba(255, 140, 66, 0.15); /* Maple orange tint */
+            backdrop-filter: blur(25px); /* Spreads underlying light */
+        }
+
+        .tinted-frost-light {
+            background: rgba(255, 179, 71, 0.25); /* Maple yellow tint */
+            backdrop-filter: blur(25px); /* Spreads underlying light */
+        }
+
+        /* Dropdown Container */
+        .dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        /* Dropdown Button/Trigger */
+        .dropdown-trigger {
             border: 1px solid var(--border-color);
             border-radius: 6px;
             padding: 8px 12px;
             color: var(--text-primary);
             font-size: 14px;
             outline: none;
+            background: var(--input-bg);
+            box-shadow: 0 1px 2px var(--shadow-color);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: all 0.3s ease;
+        }
+
+        .dropdown-trigger:hover {
+            border-color: var(--text-secondary);
+            box-shadow: 0 0 0 3px var(--shadow-color);
+        }
+
+        .dropdown-trigger::after {
+            content: '▼';
+            font-size: 10px;
+            margin-left: 8px;
+            transition: transform 0.3s ease;
+        }
+
+        .dropdown.open .dropdown-trigger::after {
+            transform: rotate(180deg);
+        }
+
+        /* Apply frosted glass effect to dropdown triggers in dark mode */
+        [data-theme="dark"] .dropdown-trigger {
+            background: rgba(255, 140, 66, 0.15);
+            backdrop-filter: blur(25px);
+            border: 1px solid var(--border-color);
+        }
+
+        /* Model selector specific styling */
+        .model-selector .dropdown-trigger {
             min-width: 200px;
         }
 
+        /* Font selector specific styling */
+        .font-selector .dropdown-trigger {
+            min-width: 150px;
+        }
+
+        /* Dropdown Window */
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            min-width: 220px;
+            margin-top: 8px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+            max-height: 300px;
+            overflow-y: auto;
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .dropdown.open .dropdown-menu {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        /* Ensure font selector dropdown has appropriate width */
+        .font-selector .dropdown-menu {
+            min-width: 180px;
+        }
+
+        /* Model selector dropdown width */
+        .model-selector .dropdown-menu {
+            min-width: 220px;
+        }
+
+        /* Dropdown Text/Items */
+        .dropdown-item {
+            padding: 12px 16px;
+            display: block;
+            text-decoration: none;
+            color: inherit;
+            transition: all 0.2s ease;
+            border-bottom: 1px solid #e5e7eb;
+            cursor: pointer;
+            background: none;
+            border: none;
+            width: 100%;
+            text-align: left;
+            font-size: 14px;
+            font-family: inherit;
+            position: relative;
+        }
+
+        .dropdown-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateX(2px);
+        }
+
+        .dropdown-item:last-child {
+            border-bottom: none;
+        }
+
+        .dropdown-item:focus {
+            outline: none;
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        /* Dark mode dropdown item styling */
+        [data-theme="dark"] .dropdown-item {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        [data-theme="dark"] .dropdown-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        [data-theme="dark"] .dropdown-item:focus {
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        /* Standard Frosted Glass for light mode - Maple themed */
+        .frosted-glass {
+            background: var(--maple-yellow);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Dark variant for dark mode - Maple themed */
+        .frosted-glass-dark {
+            background: rgba(58, 36, 26, 0.3);
+            backdrop-filter: blur(25px) saturate(130%);
+            -webkit-backdrop-filter: blur(25px) saturate(130%);
+            border: 1px solid rgba(255, 140, 66, 0.2);
+            color: var(--text-primary);
+        }
+
+        /* Apply frosted glass to dropdown menus - Maple themed */
+        .dropdown-menu {
+            background: rgba(255, 179, 71, 0.25);
+            backdrop-filter: blur(20px) saturate(120%);
+            -webkit-backdrop-filter: blur(20px) saturate(120%);
+            border: 1px solid rgba(255, 179, 71, 0.3);
+            border-radius: 12px;
+            box-shadow:
+                0 8px 32px var(--shadow-color),
+                inset 0 1px 0 rgba(255, 179, 71, 0.2);
+            overflow: hidden;
+        }
+
+        /* Dark mode frosted glass for dropdown menus - Maple themed */
+        [data-theme="dark"] .dropdown-menu {
+            background: rgba(58, 36, 26, 0.3);
+            backdrop-filter: blur(25px) saturate(130%);
+            -webkit-backdrop-filter: blur(25px) saturate(130%);
+            border: 1px solid rgba(255, 140, 66, 0.2);
+            color: var(--text-primary);
+        }
+
         .btn {
-            background: var(--accent-color);
+            background: var(--maple-orange);
             border: none;
             border-radius: 6px;
             padding: 8px 16px;
@@ -183,11 +537,20 @@
             cursor: pointer;
             transition: all 0.3s ease;
             outline: none;
+            box-shadow: 0 2px 4px var(--shadow-color);
+            white-space: nowrap;
+            overflow: hidden;
+        }
+
+        /* Hide button when collapsed */
+        .sidebar:not(:hover):not(.expanded) .btn {
+            display: none;
         }
 
         .btn:hover {
-            background: var(--accent-hover);
+            background: var(--maple-orange);
             transform: translateY(-2px);
+            box-shadow: 0 4px 8px var(--shadow-color);
         }
 
         .btn:disabled {
@@ -199,14 +562,15 @@
 
         .btn-secondary {
             background: var(--bg-tertiary);
-            border: 1px solid var(--text-secondary);
-            color: var(--accent-color);
+            border: 1px solid var(--maple-orange);
+            color: var(--maple-orange);
+            box-shadow: 0 1px 2px var(--shadow-color);
         }
 
         .btn-secondary:hover {
-            background: var(--bg-secondary);
-            border-color: var(--accent-color);
-            color: var(--accent-hover);
+            background: var(--maple-orange);
+            border-color: var(--maple-orange);
+            color: white;
         }
 
         .theme-toggle {
@@ -223,11 +587,13 @@
             justify-content: center;
             width: 40px;
             height: 36px;
+            box-shadow: 0 1px 2px var(--shadow-color);
         }
 
         .theme-toggle:hover {
             background: var(--bg-secondary);
             transform: translateY(-2px);
+            border-color: var(--maple-orange);
         }
 
         .chat-container {
@@ -236,6 +602,8 @@
             flex-direction: column;
             padding: 25px;
             overflow: hidden;
+            min-height: 0;
+            height: 100%;
         }
 
         .chat-messages {
@@ -246,11 +614,21 @@
             border-radius: 12px;
             padding: 20px;
             margin-bottom: 20px;
+            min-height: 0;
+            max-height: calc(100vh - 300px); /* Ensure it doesn't exceed viewport minus space for header and input */
+            box-shadow: 0 2px 6px var(--shadow-color);
         }
 
         .message {
             margin-bottom: 20px;
             animation: fadeIn 0.5s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .message.user {
+            align-items: flex-end;
         }
 
         @keyframes fadeIn {
@@ -261,43 +639,390 @@
         .message-header {
             display: flex;
             align-items: center;
-            gap: 10px;
-            margin-bottom: 8px;
-        }
-
-        .role-badge {
-            padding: 4px 8px;
-            border-radius: 12px;
+            gap: 8px;
+            margin-bottom: 6px;
             font-size: 12px;
+            color: var(--text-secondary);
             font-weight: 500;
         }
 
+        .message.user .message-header {
+            flex-direction: row-reverse;
+        }
+
+        .role-badge {
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
         .role-badge.user {
-            background: var(--message-bg);
-            color: var(--accent-color);
+            background: var(--maple-orange);
+            color: white;
         }
 
         .role-badge.assistant {
-            background: var(--bg-secondary);
+            background: var(--maple-yellow);
+            color: var(--maple-brown);
+            border: 1px solid var(--border-color);
+        }
+
+        .message-bubble {
+            max-width: 70%;
+            padding: 14px 18px;
+            border-radius: 18px;
+            position: relative;
+            word-wrap: break-word;
+            box-shadow: 0 1px 3px var(--shadow-color);
+        }
+
+        .message.user .message-bubble {
+            background: var(--maple-orange);
+            color: white;
+            border-bottom-right-radius: 6px;
+            margin-left: auto;
+        }
+
+        .message.assistant .message-bubble {
+            background: var(--message-bg);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-bottom-left-radius: 6px;
+        }
+
+        /* Dark theme adjustments for user messages */
+        [data-theme="dark"] .message.user .message-bubble {
+            background: var(--maple-red);
+        }
+
+        [data-theme="dark"] .role-badge.user {
+            background: var(--maple-red);
+        }
+
+        [data-theme="dark"] .role-badge.assistant {
+            background: var(--maple-brown);
+            color: var(--maple-yellow);
+        }
+
+        /* Markdown Formatting Styles for Bubble Messages */
+        .message-bubble h1,
+        .message-bubble h2,
+        .message-bubble h3,
+        .message-bubble h4,
+        .message-bubble h5,
+        .message-bubble h6 {
+            margin: 12px 0 6px 0;
+            font-weight: 600;
+            line-height: 1.25;
+        }
+
+        .message-bubble h1 { font-size: 1.4em; }
+        .message-bubble h2 { font-size: 1.3em; }
+        .message-bubble h3 { font-size: 1.2em; }
+        .message-bubble h4 { font-size: 1.1em; }
+        .message-bubble h5 { font-size: 1em; }
+        .message-bubble h6 { font-size: 0.9em; }
+
+        /* User message text styling */
+        .message.user .message-bubble h1,
+        .message.user .message-bubble h2,
+        .message.user .message-bubble h3,
+        .message.user .message-bubble h4,
+        .message.user .message-bubble h5,
+        .message.user .message-bubble h6 {
+            color: rgba(255, 255, 255, 0.95);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+            padding-bottom: 4px;
+        }
+
+        /* Assistant message text styling */
+        .message.assistant .message-bubble h1,
+        .message.assistant .message-bubble h2,
+        .message.assistant .message-bubble h3,
+        .message.assistant .message-bubble h4,
+        .message.assistant .message-bubble h5,
+        .message.assistant .message-bubble h6 {
+            color: var(--text-primary);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 4px;
+        }
+
+        .message-bubble p {
+            margin: 6px 0;
+            line-height: 1.5;
+        }
+
+        .message-bubble p:first-child {
+            margin-top: 0;
+        }
+
+        .message-bubble p:last-child {
+            margin-bottom: 0;
+        }
+
+        .message-bubble code {
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', 'Monaco', 'Menlo', monospace;
+            font-size: 0.9em;
+        }
+
+        /* User message code styling */
+        .message.user .message-bubble code {
+            background: rgba(255, 255, 255, 0.2);
+            color: rgba(255, 255, 255, 0.95);
+        }
+
+        /* Assistant message code styling */
+        .message.assistant .message-bubble code {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
             color: var(--text-primary);
         }
 
-        .message-content {
-            background: var(--message-bg);
-            border-radius: 8px;
-            padding: 15px;
+        .message-bubble pre {
+            border-radius: 6px;
+            padding: 10px;
+            margin: 8px 0;
+            overflow-x: auto;
+            font-family: 'Courier New', 'Monaco', 'Menlo', monospace;
+            font-size: 0.85em;
+            line-height: 1.4;
+        }
+
+        /* User message pre styling */
+        .message.user .message-bubble pre {
+            background: rgba(0, 0, 0, 0.2);
+            color: rgba(255, 255, 255, 0.95);
+        }
+
+        /* Assistant message pre styling */
+        .message.assistant .message-bubble pre {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+
+        .message-bubble pre code {
+            background: none;
+            border: none;
+            padding: 0;
+            font-size: inherit;
+            color: inherit;
+        }
+
+        .message-bubble blockquote {
+            margin: 8px 0;
+            padding: 6px 12px;
+            border-radius: 0 6px 6px 0;
+            font-style: italic;
+        }
+
+        /* User message blockquote styling */
+        .message.user .message-bubble blockquote {
+            border-left: 3px solid rgba(255, 255, 255, 0.4);
+            background: rgba(0, 0, 0, 0.1);
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        /* Assistant message blockquote styling */
+        .message.assistant .message-bubble blockquote {
             border-left: 3px solid var(--text-secondary);
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+        }
+
+        .message-bubble ul,
+        .message-bubble ol {
+            margin: 6px 0;
+            padding-left: 20px;
+        }
+
+        .message-bubble li {
+            margin: 3px 0;
+            line-height: 1.4;
+        }
+
+        .message-bubble table {
+            border-collapse: collapse;
+            margin: 8px 0;
+            width: 100%;
+            border-radius: 6px;
+            overflow: hidden;
+            font-size: 0.9em;
+        }
+
+        .message-bubble th,
+        .message-bubble td {
+            padding: 6px 10px;
+            text-align: left;
+        }
+
+        /* User message table styling */
+        .message.user .message-bubble table {
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .message.user .message-bubble th,
+        .message.user .message-bubble td {
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .message.user .message-bubble th {
+            background: rgba(0, 0, 0, 0.2);
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.95);
+        }
+
+        .message.user .message-bubble td {
+            background: rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        /* Assistant message table styling */
+        .message.assistant .message-bubble table {
+            border: 1px solid var(--border-color);
+        }
+
+        .message.assistant .message-bubble th,
+        .message.assistant .message-bubble td {
+            border: 1px solid var(--border-color);
+        }
+
+        .message.assistant .message-bubble th {
+            background: var(--bg-secondary);
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .message.assistant .message-bubble td {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .message-bubble a {
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: border-color 0.2s ease;
+        }
+
+        /* User message link styling */
+        .message.user .message-bubble a {
+            color: rgba(255, 255, 255, 0.9);
+            border-bottom-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .message.user .message-bubble a:hover {
+            border-bottom-color: rgba(255, 255, 255, 0.9);
+        }
+
+        /* Assistant message link styling */
+        .message.assistant .message-bubble a {
+            color: var(--maple-orange);
+        }
+
+        .message.assistant .message-bubble a:hover {
+            border-bottom-color: var(--maple-orange);
+        }
+
+        .message-bubble strong {
+            font-weight: 600;
+        }
+
+        .message-bubble em {
+            font-style: italic;
+        }
+
+        .message-bubble hr {
+            border: none;
+            margin: 12px 0;
+            height: 1px;
+        }
+
+        /* User message hr styling */
+        .message.user .message-bubble hr {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Assistant message hr styling */
+        .message.assistant .message-bubble hr {
+            background: var(--border-color);
+        }
+
+        /* Additional markdown improvements */
+        .message-bubble ul ul,
+        .message-bubble ol ol,
+        .message-bubble ul ol,
+        .message-bubble ol ul {
+            margin: 3px 0;
+        }
+
+        .message-bubble li p {
+            margin: 2px 0;
+        }
+
+        .message-bubble img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 6px;
+            margin: 6px 0;
+        }
+
+        .message-bubble del {
+            text-decoration: line-through;
+            opacity: 0.7;
+        }
+
+        .message-bubble mark {
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+
+        /* User message mark styling */
+        .message.user .message-bubble mark {
+            background: rgba(255, 255, 255, 0.3);
+            color: rgba(255, 255, 255, 0.95);
+        }
+
+        /* Assistant message mark styling */
+        .message.assistant .message-bubble mark {
+            background: var(--maple-orange);
+            color: white;
+        }
+
+        /* Responsive adjustments for bubbles */
+        @media (max-width: 768px) {
+            .message-bubble {
+                max-width: 85%;
+            }
+
+            .message-bubble table {
+                font-size: 0.8em;
+            }
+
+            .message-bubble pre {
+                font-size: 0.8em;
+                padding: 8px;
+            }
         }
 
         .input-area {
             display: flex;
             gap: 15px;
-            align-items: flex-end;
+            align-items: center;
+            min-height: 0;
+            flex-shrink: 0; /* Prevent the input area from shrinking */
+            position: relative;
+            z-index: 1; /* Ensure it stays on top */
         }
 
         .input-group {
             flex: 1;
             position: relative;
+            min-width: 0;
         }
 
         .message-input {
@@ -313,6 +1038,8 @@
             min-height: 60px;
             max-height: 120px;
             transition: all 0.3s ease;
+            overflow-y: auto;
+            box-shadow: 0 1px 3px var(--shadow-color);
         }
 
         .message-input:focus {
@@ -332,6 +1059,7 @@
             margin-bottom: 15px;
             transition: all 0.3s ease;
             cursor: pointer;
+            flex-shrink: 0; /* Prevent shrinking */
         }
 
         .image-upload-area:hover {
@@ -340,7 +1068,7 @@
         }
 
         .image-upload-area.dragover {
-            border-color: var(--accent-color);
+            border-color: var(--maple-orange);
             background: var(--message-bg);
         }
 
@@ -427,6 +1155,7 @@
             color: var(--text-primary);
             font-size: 14px;
             outline: none;
+            box-shadow: 0 1px 2px var(--shadow-color);
         }
 
         .form-input:focus {
@@ -445,7 +1174,7 @@
             border: 1px solid var(--border-color);
             border-radius: 6px;
             padding: 10px;
-            color: var(--accent-color);
+            color: var(--maple-orange);
             margin-bottom: 15px;
             font-size: 14px;
         }
@@ -556,6 +1285,7 @@
             padding: 15px;
             margin-bottom: 15px;
             font-family: 'Courier New', monospace;
+            color: var(--text-primary);
         }
 
         .inline-code {
@@ -587,9 +1317,12 @@
 
         .settings-panel {
             background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
             border-radius: 8px;
-            padding: 15px;
+            padding: 18px;
             margin-bottom: 20px;
+            flex-shrink: 0; /* Prevent shrinking */
+            box-shadow: 0 2px 4px var(--shadow-color);
         }
 
         .settings-row {
@@ -608,7 +1341,7 @@
         .slider {
             flex: 1;
             height: 4px;
-            background: var(--border-color);
+            background: #d1d5db;
             border-radius: 2px;
             outline: none;
             -webkit-appearance: none;
@@ -619,9 +1352,10 @@
             -webkit-appearance: none;
             width: 16px;
             height: 16px;
-            background: var(--text-secondary);
+            background: var(--maple-orange);
             border-radius: 50%;
             cursor: pointer;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
         }
 
         .slider-value {
@@ -637,23 +1371,495 @@
             }
 
             .sidebar {
-                width: 100%;
+                width: 100% !important;
                 height: auto;
+                position: relative;
+                z-index: 1000;
+            }
+
+            .sidebar:hover {
+                width: 100% !important;
             }
 
             .models-section {
                 max-height: 200px;
+            }
+
+            /* Reset collapsed styles on mobile */
+            .sidebar:not(:hover):not(.expanded) .logo {
+                opacity: 1;
+                transform: none;
+            }
+
+            .sidebar:not(:hover):not(.expanded) .logo-compact {
+                display: none;
+            }
+
+            .sidebar:not(:hover):not(.expanded) .status-indicator span {
+                display: inline;
+            }
+
+            .sidebar:not(:hover):not(.expanded) .section-title {
+                display: block;
+                writing-mode: initial;
+                text-orientation: initial;
+                font-size: 16px;
+                text-align: left;
+            }
+
+            .sidebar:not(:hover):not(.expanded) .model-item {
+                display: block;
+            }
+
+            .sidebar:not(:hover):not(.expanded) .model-name {
+                writing-mode: initial;
+                text-orientation: initial;
+                font-size: 14px;
+                text-align: left;
+            }
+
+            .sidebar:not(:hover):not(.expanded) .model-size {
+                display: block;
+            }
+
+
+
+            .sidebar:not(:hover):not(.expanded) .btn {
+                display: block;
+                writing-mode: initial;
+                text-orientation: initial;
+                min-height: auto;
+                padding: 8px 16px;
+            }
+            .chat-container {
+                padding: 15px;
+            }
+
+            .chat-messages {
+                max-height: calc(100vh - 400px); /* Adjust for mobile */
+            }
+
+            .input-area {
+                gap: 10px;
+            }
+
+            /* Mobile dropdown adjustments */
+            .dropdown-menu {
+                max-height: 200px;
+                left: 0;
+                right: 0;
+                min-width: auto;
+            }
+
+            .header {
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+
+            .dropdown-trigger {
+                min-width: 120px !important;
+                font-size: 13px;
+                padding: 6px 10px;
+            }
+        }
+
+        /* Light mode: Remove blur for dropdowns and frosted glass */
+        body:not([data-theme="dark"]) .dropdown-trigger,
+        body:not([data-theme="dark"]) .dropdown-menu,
+        body:not([data-theme="dark"]) .frosted-glass {
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+        }
+
+        /* Light mode: Solid background for dropdowns */
+        body:not([data-theme="dark"]) .dropdown-menu {
+            background: var(--bg-primary) !important; /* Solid white */
+        }
+
+        /* Dark mode: Preserve existing blur (no changes needed) */
+        [data-theme="dark"] .dropdown-menu {
+            /* Existing dark mode styles (keep as-is) */
+            backdrop-filter: blur(25px) saturate(130%) !important;
+            -webkit-backdrop-filter: blur(25px) saturate(130%) !important;
+            background: rgba(58, 36, 26, 0.3) !important;
+        }
+
+        /* Dark mode improvements for better contrast */
+        [data-theme="dark"] .btn {
+            box-shadow: 0 2px 4px var(--shadow-color);
+        }
+
+        [data-theme="dark"] .btn:hover {
+            box-shadow: 0 4px 8px var(--shadow-color);
+        }
+
+        [data-theme="dark"] .btn-secondary {
+            border-color: var(--border-color);
+        }
+
+        [data-theme="dark"] .btn-secondary:hover {
+            border-color: var(--maple-orange);
+            box-shadow: 0 2px 4px var(--shadow-color);
+        }
+
+        /* Dark mode slider improvements */
+        [data-theme="dark"] .slider {
+            background: var(--border-color);
+        }
+
+        [data-theme="dark"] .slider::-webkit-slider-thumb {
+            background: var(--maple-orange);
+            box-shadow: 0 1px 3px var(--shadow-color);
+        }
+
+        /* Hamburger Menu Styles */
+        .hamburger-menu {
+            position: relative;
+            display: inline-block;
+            margin-left: auto; /* Push hamburger menu to the right */
+        }
+
+        .hamburger-btn {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 8px;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            outline: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 36px;
+            box-shadow: 0 1px 2px var(--shadow-color);
+        }
+
+        .hamburger-btn:hover {
+            background: var(--bg-secondary);
+            transform: translateY(-2px);
+            border-color: var(--maple-orange);
+        }
+
+        .hamburger-icon {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .hamburger-icon span {
+            width: 18px;
+            height: 2px;
+            background: var(--text-primary);
+            border-radius: 1px;
+            transition: all 0.3s ease;
+        }
+
+        /* Hamburger Menu Panel */
+        .hamburger-panel {
+            position: fixed;
+            top: 0;
+            right: -350px;
+            width: 350px;
+            height: 100vh;
+            background: var(--bg-primary);
+            border-left: 1px solid var(--border-color);
+            box-shadow: -2px 0 10px var(--shadow-color);
+            transition: right 0.3s ease;
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .hamburger-panel.open {
+            right: 0;
+        }
+
+        .hamburger-panel-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .hamburger-panel-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .close-panel-btn {
+            background: none;
+            border: none;
+            font-size: 20px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .close-panel-btn:hover {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        .hamburger-menu-items {
+            padding: 20px;
+        }
+
+        .hamburger-menu-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            margin-bottom: 8px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: var(--text-primary);
+        }
+
+        .hamburger-menu-item:hover {
+            background: var(--bg-secondary);
+            border-color: var(--maple-orange);
+            transform: translateX(-2px);
+        }
+
+        .hamburger-menu-item-icon {
+            font-size: 18px;
+            width: 24px;
+            text-align: center;
+        }
+
+        .hamburger-menu-item-text {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        /* Performance Metrics Modal */
+        .performance-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1001;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .performance-modal-content {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 0;
+            max-width: 90vw;
+            max-height: 90vh;
+            width: 1000px;
+            height: 700px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .performance-modal-header {
+            padding: 20px 25px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-secondary);
+        }
+
+        .performance-modal-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .performance-modal-body {
+            padding: 25px;
+            height: calc(100% - 80px);
+            overflow-y: auto;
+        }
+
+        /* Performance Dashboard Styles */
+        .performance-metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .performance-metric-card {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 6px var(--shadow-color);
+            text-align: center;
+        }
+
+        .metric-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Area Chart Styles */
+        .area-chart-container {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 6px var(--shadow-color);
+        }
+
+        .chart-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .chart-canvas-container {
+            position: relative;
+            height: 350px;
+            width: 100%;
+        }
+
+        .metric-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 5px;
+        }
+
+        .metric-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .metric-change {
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .metric-change.positive {
+            color: #10b981;
+        }
+
+        .metric-change.negative {
+            color: #ef4444;
+        }
+
+
+
+        /* Real-time indicator */
+        .realtime-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 15px;
+        }
+
+        .realtime-dot {
+            width: 8px;
+            height: 8px;
+            background: #10b981;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        /* Overlay for hamburger menu */
+        .hamburger-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: 999;
+        }
+
+        .hamburger-overlay.active {
+            display: block;
+        }
+
+        /* SVG Color Inversion Styles */
+        .svg-container {
+            transition: filter 0.3s ease;
+        }
+
+        .svg-container.inverted {
+            filter: invert(1);
+        }
+
+        /* Mobile responsive adjustments */
+        @media (max-width: 768px) {
+            .hamburger-panel {
+                width: 280px;
+            }
+
+            .performance-modal-content {
+                width: 95vw;
+                height: 85vh;
+                margin: 20px;
+            }
+
+            .performance-metrics-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+            }
+
+            .performance-metric-card {
+                padding: 15px;
+            }
+
+            .metric-value {
+                font-size: 24px;
+            }
+
+            .chart-canvas-container {
+                height: 250px;
+            }
+
+            .area-chart-container {
+                padding: 15px;
             }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="sidebar">
+        <div class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <div class="logo">Ollama GUI</div>
+                <div class="logo-compact">
+                    <div class="svg-container" id="svg-container">
+                        <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+                            <path d="m441.52 112.48c-6.64-17-28.39-8.69-39.34-26.64-4.76-26.6-23.26-34.19-31.49-4a17.17 17.17 0 0 0 -21.8 13.5 16.48 16.48 0 0 0 -13.84 19.92c-8.91 5.17-12.29 17.39-7 26.29a20.12 20.12 0 0 0 -5.45 22 17.78 17.78 0 0 0 -4.55 17.21 16.57 16.57 0 0 0 -7.75 9.16 15.94 15.94 0 0 0 -14.47 7 18.69 18.69 0 0 0 -16 .91 17.6 17.6 0 0 0 -21.16-3.07 19.63 19.63 0 0 0 -22.29-4.38 17.6 17.6 0 0 0 -22.71-2.71 20.18 20.18 0 0 0 -22.84-1.46 19.91 19.91 0 0 0 -18.68-.93c-6.71-5.87-17.89-5.64-24.27.66a19.3 19.3 0 0 0 -9.72-2.24c-4.55-7.64-15.84-10-22.9-4.39-9.43-6.3-23.31-1.4-27.07 9.17-13.85 2.1-21.78 19.27-14.07 31.08-9.36 10.41-3.65 27.51 10.27 29.82a14.76 14.76 0 0 0 14.24 10.62c0 .32.07.63.11 1-7.92 1.4-12.16 11.32-11.41 19-9.13 6.25-9.45 19.64-1.68 27.17-4.55 7.76-2.93 17.83 2.89 24.83-6.19 7.12-6.8 14.26-5.53 20-29 15.24 8.83 86.58 10.8 88.2a7.5 7.5 0 0 0 6.2 3.28h20.5a7.55 7.55 0 0 0 6.81-10.65c-16.64-36.53-11-55.21 16.65-86.87-9.48 37.29 27.51 84.85 39.05 100.52 2.83 5.47 23.24 2.16 28 3a7.54 7.54 0 0 0 6.93-10.36c-11.52-27.87-23.91-61.41-24.56-68.82 1.87-3.94 9.75-15.77 18.13-27.68 5.5 4.75 13.65 4.73 19.77 3.24 5 4 11.47 5.11 19.25 3.3a166.75 166.75 0 0 0 -2 38.83c3.83 32.49 6.79 62.45 17 61.49h25.46a7.52 7.52 0 0 0 6.17-3.22c3.32-7.44-.23-6.56-2.72-18.26 15.2 12.27 26.33-9.85 37.53-23 18.68-26.07 14.73-35.41 13.43-38.48-3.8-9-12.51-30.19-17.41-42.15a25 25 0 0 0 13.37-13.77c8.06-.92 15.85-7.15 18.18-14.81 6.89-2 14.19-7 15.55-14.38 9-3.93 15.23-13.17 14-22.73a17.7 17.7 0 0 0 7-18.16 20.09 20.09 0 0 0 4.94-19 20.05 20.05 0 0 0 2.26-22.77 17.14 17.14 0 0 0 .77-16.42 17.54 17.54 0 0 0 .3-21.83 24.25 24.25 0 0 0 .68-16.7c17.56-4.14 42.58-11 36.47-31.32zm-337.14 269c-3.85 11.07-.56 32.16 5.09 47.08h-5.18c-1.61-1.67-24.16-50.2-15.66-61.17 4-6 8-2.38 10.72-7.87 3.13-9.52-8.59-12 4.6-21.25a7.55 7.55 0 0 0 0-12.14c-4.62-3.12-8.4-9.53-3.91-12.79 6.36-2.06 6.51-11.75.21-14-3.23-1.42-6.71-4.32-4.37-6.93 5.34.34 9.4-5.68 7.11-10.51a8.55 8.55 0 0 1 0-6.59 21.31 21.31 0 0 1 3-.44c-3.5 9.8 1.66 21.39 11.41 25.14a18.24 18.24 0 0 0 11.82 19.79 21.48 21.48 0 0 0 4.55 15.15c-8.52 9.86-24.67 30.19-29.39 46.51zm186.27 9.12c.09-8.66.37-18.57.73-28.25 7.92 15 6.51 16.77-.73 28.23zm135.72-270.49c-2.8 3.19-19.15 8.47-35 11.3-6.41.94-8.41 10-3 13.52 8.12 8.31-2.55 11.59-1.25 18.5a7.52 7.52 0 0 0 4.45 5.53 2.58 2.58 0 0 1 -.44 4.83 7.52 7.52 0 0 0 -5.85 6.52c-.56 6.55 4.29 6 5.59 9.54-.71 3.06-5.16 3.4-5.12 8.12-1 4.92 5.36 6.49 5.15 11-.38 4.37-6.5 4.87-6.68 9.51-1.24 4 3.24 5.74 2.37 9.55-1.26 3.86-6.12 2.8-7.09 7.51-1.84 4.12 2.52 6.52 1.87 9.85a2.91 2.91 0 0 1 -2.27 1.66c-5.66.3-8.91 7.44-5.42 11.9 4.05 12.05-18.73 7-14.08 20.39-3.15 2.84-7.25 2.25-11.05 3.15a7.54 7.54 0 0 0 -4.14 10.43c-3.38 5.25-9.54.61-13.62 4-4.37 3-1.58 8.73-6 12-4 4.12-9.93.35-13.21 5.2-5.83 5.4 14 40.26 20 58.23 3.13 4.45-21.71 39-28.29 43.52a51.9 51.9 0 0 1 -6.57-7.05c12.87-20.56 23-28.17 6.08-57.08-8.73-13.72-10.84-23.71-19.83-22a7.51 7.51 0 0 0 -5.45 6.81c-.44 15.19-5.57 77.81 3.18 97.9h-9.42a283.74 283.74 0 0 1 -7.8-47.5 146.66 146.66 0 0 1 4.62-47.76c2.15-6.16-5.08-12.13-10.72-8.83-14 7.57-17 3.76-17.93 2.5a7.53 7.53 0 0 0 -8.17-2.57c-9.53 2.34-10.25 2.5-12-3-1.22-6.12-9.9-7.87-13.38-2.69-5.66 7.83-24.34 33.94-27 41.37-1.11 3.1-2.48 7 11.6 44.53 3.33 8.87 6.76 17.57 9.33 24h-7.03c-23-31.06-43-62.84-32-97.16a7.52 7.52 0 0 0 -1.76-7.13c-3.65-4.57-10.9.26-14-5.2a7.09 7.09 0 0 1 .33-7.64c4.59-5.65-1.8-14.31-8.56-11.58a3.58 3.58 0 0 1 -3.37-6.15c6.57-4.71 1-15.64-6.64-13.16-5.67 1.59-9.53-6.07-4.88-9.68 5.33-3.77 2.87-12.84-3.64-13.41-4.45-.47-6.37-6.44-3-9.42 4.28-3.67 2.52-11.2-2.84-12.68 1.1-3 2-3.54 5.77-2.12 9 3.75 14.67-10.43 5.59-13.92-10.25-4.28-20.7-.81-25 9.72-2.61-2.4-6.79-2.33-9.7-.3-2.66.66-6-1.7-4-4.62 2.57-3.39 7.41-1.82 8.33-8.13a7.49 7.49 0 0 0 -4.1-7.81c-5.7-3.14-2.87-11.88 3.69-10.87 12.09.71 6.15-10 11.83-11.67a4.1 4.1 0 0 1 4.15 2.43c2.42 7.32 13.81 5.95 14.52-1.7a1.15 1.15 0 0 1 2.28.21c-.62 6.15 7 10.39 11.89 6.59 5.89-2.11 4.27 7.95 12.46 7s4.63-8.68 9.93-10c5.1.19 3.58 7.89 10.43 8 6.68.53 5.79-5.61 10.19-5.59 1.32 0 2.55.51 2.81 1.14 2.07 5.46 10.16 6.21 13.2 1.23a5.44 5.44 0 0 1 9.59 1.24c2 6.84 12.5 6.66 14.3-.23a3 3 0 0 1 5.76.65c.2 7.07 10.27 9.63 13.83 3.52a5.39 5.39 0 0 1 5.48-2.16c6.08 2.17 1.81 10.81 10.44 11.69 8.37.78 6.41-7.92 11.5-7.94 5.16 1.66.5 9 8.92 10.67 8.18 1.4 6.93-7.15 12.29-7.66 5.79.8 4 9 12.61 7.34 8.68-1.88 3.55-11.81 7.92-13 1 9.06 15.17 8.1 14.93-1 0-3.25-1.21-8 1-10 6.37 4.94 15.34-3.52 10.66-10.19-1.82-3.17-4.66-6.67-2.86-9.42 7.44 1.24 11.68-9.21 5.42-13.49a5.26 5.26 0 0 1 3.05-9.51c8.26.14 10.19-12.25 2.28-14.62a4.87 4.87 0 0 1 1.86-9.49c7.43.73 11-9.75 4.69-13.72-.61-.24-.92-2.42-.41-2.82 3.49-2.27 6.34 5.93 13.27.26a7.48 7.48 0 0 0 .73-10.39 2.9 2.9 0 0 1 -.39-2.19c.15-3 4-2.6 5-.64a7.53 7.53 0 0 0 7.79 4.58c8.66-1.15 6.73-13 9.5-18.76 2 14.74 18.58 28 35.09 30.93 5.25.94 8.12 2.7 5.41 5.58z"></path>
+                        </svg>
+                    </div>
+                </div>
                 <div class="status-indicator">
-                    <div class="status-dot" id="statusDot"></div>
                     <span id="statusText">Connecting...</span>
                 </div>
             </div>
@@ -665,18 +1871,53 @@
                     Pull New Model
                 </button>
             </div>
+
+            <div class="sidebar-toggle" id="sidebarToggle" title="Toggle sidebar">
+                <div class="sidebar-toggle-icon">◀</div>
+            </div>
         </div>
 
         <div class="main-content">
             <div class="header">
-                <select class="model-selector" id="modelSelector">
-                    <option value="">Select a model...</option>
-                </select>
+                <div class="dropdown model-selector" id="modelSelector">
+                    <button class="dropdown-trigger" id="modelTrigger">
+                        <span id="modelTriggerText">Select a model...</span>
+                    </button>
+                    <div class="dropdown-menu" id="modelMenu">
+                        <!-- Model options will be populated by JavaScript -->
+                    </div>
+                </div>
                 <button class="btn btn-secondary" id="settingsBtn">Settings</button>
                 <button class="theme-toggle" id="themeToggle" title="Toggle dark/light mode">
                     🌙
                 </button>
                 <button class="btn" id="clearChatBtn">Clear Chat</button>
+                <div class="dropdown font-selector" id="fontSelector" title="Change chat font style">
+                    <button class="dropdown-trigger" id="fontTrigger">
+                        <span id="fontTriggerText">System Default</span>
+                    </button>
+                    <div class="dropdown-menu" id="fontMenu">
+                        <button class="dropdown-item" data-value="system">System Default</button>
+                        <button class="dropdown-item" data-value="Arial, sans-serif">Arial</button>
+                        <button class="dropdown-item" data-value="'Times New Roman', serif">Times New Roman</button>
+                        <button class="dropdown-item" data-value="'Courier New', monospace">Courier New</button>
+                        <button class="dropdown-item" data-value="Georgia, serif">Georgia</button>
+                        <button class="dropdown-item" data-value="Verdana, sans-serif">Verdana</button>
+                        <button class="dropdown-item" data-value="'Trebuchet MS', sans-serif">Trebuchet MS</button>
+                        <button class="dropdown-item" data-value="'Comic Sans MS', cursive">Comic Sans MS</button>
+                        <button class="dropdown-item" data-value="Impact, sans-serif">Impact</button>
+                        <button class="dropdown-item" data-value="'Lucida Console', monospace">Lucida Console</button>
+                    </div>
+                </div>
+                <div class="hamburger-menu">
+                    <button class="hamburger-btn" id="hamburgerBtn" title="Open menu">
+                        <div class="hamburger-icon">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                    </button>
+                </div>
             </div>
 
             <div class="chat-container">
@@ -705,12 +1946,18 @@
                 </div>
 
                 <div class="chat-messages" id="chatMessages">
-                    <div class="message">
+                    <div class="message assistant">
                         <div class="message-header">
-                            <div class="role-badge assistant">Assistant</div>
+                            <div class="role-badge assistant">AI</div>
                         </div>
-                        <div class="message-content">
+                        <div class="message-bubble">
                             Welcome to Ollama GUI! Select a model from the dropdown above to start chatting. You can also upload images when using vision-enabled models like LLaVA.
+
+                            **Markdown rendering is enabled** - LLM responses will be formatted with support for:
+                            - **Bold** and *italic* text
+                            - `inline code` and code blocks
+                            - Lists, tables, and blockquotes
+                            - Headers and links
                         </div>
                     </div>
                 </div>
@@ -811,11 +2058,88 @@
         </div>
     </div>
 
+    <!-- Hamburger Menu Overlay -->
+    <div class="hamburger-overlay" id="hamburgerOverlay"></div>
+
+    <!-- Hamburger Menu Panel -->
+    <div class="hamburger-panel" id="hamburgerPanel">
+        <div class="hamburger-panel-header">
+            <div class="hamburger-panel-title">Menu</div>
+            <button class="close-panel-btn" id="closePanelBtn">×</button>
+        </div>
+        <div class="hamburger-menu-items">
+            <div class="hamburger-menu-item" id="performanceMetricsBtn">
+                <div class="hamburger-menu-item-icon">📊</div>
+                <div class="hamburger-menu-item-text">Performance Metrics</div>
+            </div>
+            <div class="hamburger-menu-item" id="aboutBtn">
+                <div class="hamburger-menu-item-icon">ℹ️</div>
+                <div class="hamburger-menu-item-text">About</div>
+            </div>
+            <div class="hamburger-menu-item" id="helpBtn">
+                <div class="hamburger-menu-item-icon">❓</div>
+                <div class="hamburger-menu-item-text">Help</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Performance Metrics Modal -->
+    <div class="performance-modal" id="performanceModal">
+        <div class="performance-modal-content">
+            <div class="performance-modal-header">
+                <div class="performance-modal-title">Performance Metrics Dashboard</div>
+                <button class="close-panel-btn" id="closePerformanceBtn">×</button>
+            </div>
+            <div class="performance-modal-body">
+                <div class="realtime-indicator">
+                    <div class="realtime-dot"></div>
+                    <span>Real-time monitoring</span>
+                </div>
+
+                <!-- Performance Metrics Grid -->
+                <div class="performance-metrics-grid">
+                    <div class="performance-metric-card">
+                        <div class="metric-title">CPU Usage</div>
+                        <div class="metric-value" id="cpuUsage">--</div>
+                        <div class="metric-change" id="cpuChange">--</div>
+                    </div>
+
+                    <div class="performance-metric-card">
+                        <div class="metric-title">Memory Usage</div>
+                        <div class="metric-value" id="memoryUsage">--</div>
+                        <div class="metric-change" id="memoryChange">--</div>
+                    </div>
+
+                    <div class="performance-metric-card">
+                        <div class="metric-title">Network Activity</div>
+                        <div class="metric-value" id="networkActivity">--</div>
+                        <div class="metric-change" id="networkChange">--</div>
+                    </div>
+
+                    <div class="performance-metric-card">
+                        <div class="metric-title">System Load</div>
+                        <div class="metric-value" id="systemLoad">--</div>
+                        <div class="metric-change" id="loadChange">--</div>
+                    </div>
+                </div>
+
+                <!-- Application Ratio Area Chart -->
+                <div class="area-chart-container">
+                    <div class="chart-title">System Performance Over Time</div>
+                    <div class="chart-canvas-container">
+                        <canvas id="performanceAreaChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         class OllamaGUI {
             constructor() {
                 this.baseURL = 'http://localhost:11434';
                 this.selectedModel = '';
+                this.previousModel = ''; // Track previous model for cleanup
                 this.currentImage = null;
                 this.messages = [];
                 this.settings = {
@@ -824,6 +2148,27 @@
                     max_tokens: 2000
                 };
                 this.isDarkMode = localStorage.getItem('darkMode') === 'true';
+                this.selectedFont = localStorage.getItem('selectedFont') || 'system';
+
+                // Performance monitoring
+                this.performanceData = {
+                    cpu: [],
+                    memory: [],
+                    network: [],
+                    load: [],
+                    upperData: [],
+                    lowerData: []
+                };
+                this.performanceInterval = null;
+                this.isPerformanceModalOpen = false;
+                this.performanceChart = null;
+
+                this.previousMetrics = {
+                    cpu: 0,
+                    memory: 0,
+                    network: 0,
+                    load: 0
+                };
 
                 this.init();
             }
@@ -832,6 +2177,8 @@
                 this.bindEvents();
                 this.setupSliders();
                 this.initTheme();
+                this.initFontStyle();
+                this.initSidebar();
                 await this.checkConnection();
                 await this.loadModels();
             }
@@ -846,11 +2193,8 @@
                     }
                 });
 
-                // Model selection
-                document.getElementById('modelSelector').addEventListener('change', (e) => {
-                    this.selectedModel = e.target.value;
-                    console.log('Selected model:', this.selectedModel);
-                });
+                // Custom dropdown functionality
+                this.initDropdowns();
 
                 // Clear chat
                 document.getElementById('clearChatBtn').addEventListener('click', () => this.clearChat());
@@ -902,6 +2246,36 @@
                         this.testRegistryCheck();
                     }
                 });
+
+                // Hamburger menu events
+                document.getElementById('hamburgerBtn').addEventListener('click', () => this.toggleHamburgerMenu());
+                document.getElementById('closePanelBtn').addEventListener('click', () => this.closeHamburgerMenu());
+                document.getElementById('hamburgerOverlay').addEventListener('click', () => this.closeHamburgerMenu());
+
+                // Performance metrics events
+                document.getElementById('performanceMetricsBtn').addEventListener('click', () => this.showPerformanceModal());
+                document.getElementById('closePerformanceBtn').addEventListener('click', () => this.hidePerformanceModal());
+
+                // Other menu items (placeholder functionality)
+                document.getElementById('aboutBtn').addEventListener('click', () => {
+                    this.closeHamburgerMenu();
+                    this.showSuccess('Ollama GUI v1.0 - A modern interface for Ollama');
+                });
+                document.getElementById('helpBtn').addEventListener('click', () => {
+                    this.closeHamburgerMenu();
+                    this.showSuccess('Help: Use the model selector to choose a model, then start chatting!');
+                });
+
+                // Sidebar toggle functionality
+                document.getElementById('sidebarToggle').addEventListener('click', () => this.toggleSidebar());
+
+                // SVG Color Inversion functionality - Auto-invert every 2 seconds
+                const svgContainer = document.getElementById('svg-container');
+                if (svgContainer) {
+                    setInterval(function() {
+                        svgContainer.classList.toggle('inverted');
+                    }, 2000); // 2000 milliseconds = 2 seconds
+                }
             }
 
             setupSliders() {
@@ -923,16 +2297,109 @@
                 });
             }
 
+            initDropdowns() {
+                // Model selector dropdown
+                const modelTrigger = document.getElementById('modelTrigger');
+                const modelDropdown = document.getElementById('modelSelector');
+
+                modelTrigger.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.toggleDropdown('modelSelector');
+                });
+
+                // Font selector dropdown
+                const fontTrigger = document.getElementById('fontTrigger');
+                const fontDropdown = document.getElementById('fontSelector');
+
+                fontTrigger.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.toggleDropdown('fontSelector');
+                });
+
+                // Font selector items
+                const fontItems = document.querySelectorAll('#fontMenu .dropdown-item');
+                fontItems.forEach(item => {
+                    item.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const value = item.getAttribute('data-value');
+                        const text = item.textContent;
+                        this.selectFontOption(value, text);
+                        this.closeDropdown('fontSelector');
+                    });
+                });
+
+                // Close dropdowns when clicking outside
+                document.addEventListener('click', (e) => {
+                    if (!e.target.closest('.dropdown')) {
+                        this.closeAllDropdowns();
+                    }
+                });
+
+                // Keyboard navigation for dropdowns
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') {
+                        this.closeAllDropdowns();
+                    }
+                });
+            }
+
+            toggleDropdown(dropdownId) {
+                const dropdown = document.getElementById(dropdownId);
+                const isOpen = dropdown.classList.contains('open');
+
+                // Close all other dropdowns first
+                this.closeAllDropdowns();
+
+                if (!isOpen) {
+                    dropdown.classList.add('open');
+                }
+            }
+
+            closeDropdown(dropdownId) {
+                const dropdown = document.getElementById(dropdownId);
+                dropdown.classList.remove('open');
+            }
+
+            closeAllDropdowns() {
+                const dropdowns = document.querySelectorAll('.dropdown');
+                dropdowns.forEach(dropdown => {
+                    dropdown.classList.remove('open');
+                });
+            }
+
+            selectModelOption(value, text) {
+                document.getElementById('modelTriggerText').textContent = text;
+                this.selectedModel = value;
+                console.log('Selected model:', this.selectedModel);
+
+                // Handle model switch
+                if (value) {
+                    this.handleModelSwitch(value);
+                }
+            }
+
+            selectFontOption(value, text) {
+                document.getElementById('fontTriggerText').textContent = text;
+                this.changeFontStyle(value);
+            }
+
             async checkConnection() {
                 try {
                     const response = await fetch(`${this.baseURL}/api/version`);
                     if (response.ok) {
-                        document.getElementById('statusDot').classList.add('connected');
+                        const logoSvg = document.querySelector('.logo-compact svg');
+                        if (logoSvg) {
+                            logoSvg.classList.add('connected');
+                        }
                         document.getElementById('statusText').textContent = 'Connected';
                     } else {
                         throw new Error('Connection failed');
                     }
                 } catch (error) {
+                    const logoSvg = document.querySelector('.logo-compact svg');
+                    if (logoSvg) {
+                        logoSvg.classList.remove('connected');
+                    }
                     document.getElementById('statusText').textContent = 'Disconnected';
 
                     // Check if it's a CORS error
@@ -950,10 +2417,10 @@
                     const data = await response.json();
 
                     const modelsList = document.getElementById('modelsList');
-                    const modelSelector = document.getElementById('modelSelector');
+                    const modelMenu = document.getElementById('modelMenu');
 
                     modelsList.innerHTML = '';
-                    modelSelector.innerHTML = '<option value="">Select a model...</option>';
+                    modelMenu.innerHTML = '';
 
                     if (data.models && data.models.length > 0) {
                         data.models.forEach(model => {
@@ -964,23 +2431,37 @@
                                 <div class="model-name">${model.name}</div>
                                 <div class="model-size">${this.formatSize(model.size)}</div>
                             `;
-                            modelItem.addEventListener('click', () => {
+                            modelItem.addEventListener('click', async () => {
                                 document.querySelectorAll('.model-item').forEach(item => item.classList.remove('active'));
                                 modelItem.classList.add('active');
-                                this.selectedModel = model.name;
-                                modelSelector.value = model.name;
+
+                                // Handle model switch with cleanup
+                                await this.handleModelSwitch(model.name);
+
+                                this.selectModelOption(model.name, model.name);
                                 console.log('Selected model:', this.selectedModel);
                             });
                             modelsList.appendChild(modelItem);
 
-                            // Add to selector
-                            const option = document.createElement('option');
-                            option.value = model.name;
-                            option.textContent = model.name;
-                            modelSelector.appendChild(option);
+                            // Add to dropdown menu
+                            const dropdownItem = document.createElement('button');
+                            dropdownItem.className = 'dropdown-item';
+                            dropdownItem.setAttribute('data-value', model.name);
+                            dropdownItem.textContent = model.name;
+                            dropdownItem.addEventListener('click', (e) => {
+                                e.stopPropagation();
+                                this.selectModelOption(model.name, model.name);
+                                this.closeDropdown('modelSelector');
+
+                                // Update sidebar selection
+                                document.querySelectorAll('.model-item').forEach(item => item.classList.remove('active'));
+                                modelItem.classList.add('active');
+                            });
+                            modelMenu.appendChild(dropdownItem);
                         });
                     } else {
                         modelsList.innerHTML = '<div style="text-align: center; color: #6b7280;">No models available. Pull a model to get started.</div>';
+                        modelMenu.innerHTML = '<div class="dropdown-item" style="opacity: 0.6; cursor: default;">No models available</div>';
                     }
                 } catch (error) {
                     this.showError('Failed to load models');
@@ -1002,6 +2483,12 @@
                 if (!this.selectedModel) {
                     this.showWarning('Please select a model first');
                     return;
+                }
+
+                // Check for model switch before sending message
+                if (this.selectedModel !== this.previousModel) {
+                    console.log('Model change detected in sendMessage, handling switch...');
+                    await this.handleModelSwitch(this.selectedModel);
                 }
 
                 const sendBtn = document.getElementById('sendBtn');
@@ -1079,20 +2566,41 @@
             addMessage(role, content, image = null) {
                 const messagesContainer = document.getElementById('chatMessages');
                 const messageDiv = document.createElement('div');
-                messageDiv.className = 'message';
+                messageDiv.className = `message ${role}`;
 
                 let imageHtml = '';
                 if (image) {
-                    imageHtml = `<img src="${image}" alt="Uploaded image" class="uploaded-image" style="display: block; margin: 10px 0;">`;
+                    imageHtml = `<img src="${image}" alt="Uploaded image" class="uploaded-image" style="display: block; margin: 8px 0; border-radius: 8px; max-width: 200px;">`;
+                }
+
+                // Process content with markdown
+                let processedContent;
+                if (typeof marked !== 'undefined') {
+                    try {
+                        // Configure marked for security
+                        marked.setOptions({
+                            breaks: true,
+                            gfm: true,
+                            sanitize: false, // We'll handle sanitization manually if needed
+                            smartLists: true,
+                            smartypants: false
+                        });
+                        processedContent = marked.parse(content);
+                    } catch (error) {
+                        console.warn('Markdown parsing failed, falling back to plain text:', error);
+                        processedContent = content.replace(/\n/g, '<br>');
+                    }
+                } else {
+                    processedContent = content.replace(/\n/g, '<br>');
                 }
 
                 messageDiv.innerHTML = `
                     <div class="message-header">
-                        <div class="role-badge ${role}">${role === 'user' ? 'You' : 'Assistant'}</div>
+                        <div class="role-badge ${role}">${role === 'user' ? 'You' : 'AI'}</div>
                     </div>
-                    <div class="message-content">
+                    <div class="message-bubble">
                         ${imageHtml}
-                        ${content.replace(/\n/g, '<br>')}
+                        ${processedContent}
                     </div>
                 `;
 
@@ -1104,12 +2612,12 @@
                 this.messages = [];
                 const messagesContainer = document.getElementById('chatMessages');
                 messagesContainer.innerHTML = `
-                    <div class="message">
+                    <div class="message assistant">
                         <div class="message-header">
-                            <div class="role-badge assistant">Assistant</div>
+                            <div class="role-badge assistant">AI</div>
                         </div>
-                        <div class="message-content">
-                            Chat cleared! Ready for a new conversation.
+                        <div class="message-bubble">
+                            Chat cleared! Ready for a new conversation. **Markdown rendering is enabled** - you can use formatting like *italic*, **bold**, \`code\`, and more!
                         </div>
                     </div>
                 `;
@@ -1152,35 +2660,35 @@
             }
 
             async pullModel() {
-        const modelName = document.getElementById('modelNameInput').value.trim();
-        if (!modelName) {
-            document.getElementById('pullModelError').innerHTML = '<div class="error">Please enter a model name</div>';
-            return;
-        }
+                const modelName = document.getElementById('modelNameInput').value.trim();
+                if (!modelName) {
+                    document.getElementById('pullModelError').innerHTML = '<div class="error">Please enter a model name</div>';
+                    return;
+                }
 
-        const confirmBtn = document.getElementById('confirmPullBtn');
-        confirmBtn.disabled = true;
-        confirmBtn.textContent = 'Checking model...';
+                const confirmBtn = document.getElementById('confirmPullBtn');
+                confirmBtn.disabled = true;
+                confirmBtn.textContent = 'Checking model...';
 
-        try {
-            // First check if the model exists in the registry
-            const registryCheck = await this.modelExistsInRegistry(modelName);
+                try {
+                    // First check if the model exists in the registry
+                    const registryCheck = await this.modelExistsInRegistry(modelName);
 
-            if (!registryCheck.exists) {
-                throw new Error(`Model "${modelName}" not found in registry. Please verify the model name.`);
-            }
+                    if (!registryCheck.exists) {
+                        throw new Error(`Model "${modelName}" not found in registry. Please verify the model name.`);
+                    }
 
-            confirmBtn.textContent = 'Pulling...';
+                    confirmBtn.textContent = 'Pulling...';
 
-            const response = await fetch(`${this.baseURL}/api/pull`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    name: modelName
-                })
-            });
+                    const response = await fetch(`${this.baseURL}/api/pull`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            name: modelName
+                        })
+                    });
 
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`);
@@ -1447,6 +2955,474 @@
                     themeToggle.textContent = '🌙';
                     themeToggle.title = 'Switch to dark mode';
                 }
+
+                // Update chart theme if chart exists
+                this.updateChartTheme();
+            }
+
+            getMapleChartColors() {
+                const isDark = document.body.hasAttribute('data-theme');
+                return {
+                    gridColor: isDark ? '#4a2c1a' : '#e8d5c4', // Maple border colors
+                    textColor: isDark ? '#d2b48c' : '#8b5a3c', // Maple text colors
+                    upperBgColor: isDark ? 'rgba(255, 179, 71, 0.3)' : 'rgba(255, 140, 66, 0.3)', // maple-yellow/orange with transparency
+                    upperBorderColor: isDark ? 'rgba(255, 179, 71, 0.8)' : 'rgba(255, 140, 66, 0.8)',
+                    lowerBgColor: isDark ? 'rgba(255, 140, 66, 0.6)' : 'rgba(204, 85, 0, 0.6)', // maple-orange/red with transparency
+                    lowerBorderColor: isDark ? 'rgba(255, 140, 66, 1)' : 'rgba(204, 85, 0, 1)'
+                };
+            }
+
+            updateChartTheme() {
+                if (!this.performanceChart) return;
+
+                const colors = this.getMapleChartColors();
+
+                // Update chart options
+                this.performanceChart.options.scales.x.grid.color = colors.gridColor;
+                this.performanceChart.options.scales.x.ticks.color = colors.textColor;
+                this.performanceChart.options.scales.y.grid.color = colors.gridColor;
+                this.performanceChart.options.scales.y.ticks.color = colors.textColor;
+
+                // Update dataset colors
+                this.performanceChart.data.datasets[0].backgroundColor = colors.upperBgColor;
+                this.performanceChart.data.datasets[0].borderColor = colors.upperBorderColor;
+                this.performanceChart.data.datasets[1].backgroundColor = colors.lowerBgColor;
+                this.performanceChart.data.datasets[1].borderColor = colors.lowerBorderColor;
+
+                // Update the chart
+                this.performanceChart.update('none');
+            }
+
+            initFontStyle() {
+                // Set the initial font display text
+                const fontTriggerText = document.getElementById('fontTriggerText');
+                const fontItems = document.querySelectorAll('#fontMenu .dropdown-item');
+
+                // Find the matching font item and set the display text
+                fontItems.forEach(item => {
+                    if (item.getAttribute('data-value') === this.selectedFont) {
+                        fontTriggerText.textContent = item.textContent;
+                    }
+                });
+
+                this.applyFontStyle(this.selectedFont);
+            }
+
+            changeFontStyle(fontFamily) {
+                this.selectedFont = fontFamily;
+                localStorage.setItem('selectedFont', fontFamily);
+                this.applyFontStyle(fontFamily);
+            }
+
+            applyFontStyle(fontFamily) {
+                const chatMessages = document.getElementById('chatMessages');
+
+                if (fontFamily === 'system') {
+                    // Reset to system default
+                    chatMessages.style.fontFamily = '';
+                } else {
+                    chatMessages.style.fontFamily = fontFamily;
+                }
+            }
+
+            // Model management functions for automatic cleanup
+            async getRunningModels() {
+                try {
+                    const response = await fetch(`${this.baseURL}/api/ps`);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    const data = await response.json();
+
+                    // Debug: Log the raw API response
+                    console.log('Raw /api/ps response:', data);
+
+                    // Extract model names from the response
+                    // The API returns an object with a 'models' array containing running model info
+                    const runningModels = [];
+                    if (data.models && Array.isArray(data.models)) {
+                        data.models.forEach(model => {
+                            if (model.name) {
+                                runningModels.push(model.name);
+                            }
+                        });
+                    }
+
+                    console.log('Running models found:', runningModels);
+                    return runningModels;
+                } catch (error) {
+                    console.error('Error checking running models:', error);
+                    return [];
+                }
+            }
+
+            async stopModel(modelName) {
+                try {
+                    console.log(`Stopping model: ${modelName}`);
+
+                    // Method 1: Use generate endpoint with keep_alive: 0 to unload the model
+                    const response = await fetch(`${this.baseURL}/api/generate`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            model: modelName,
+                            prompt: "", // Empty prompt
+                            keep_alive: 0 // This tells Ollama to unload the model immediately
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    // Read the response to ensure the request completes
+                    await response.text();
+
+                    console.log(`Successfully stopped model: ${modelName}`);
+                    return true;
+                } catch (error) {
+                    console.error(`Error stopping model ${modelName}:`, error);
+                    return false;
+                }
+            }
+
+            async handleModelSwitch(newModel) {
+                // If no previous model or same model selected, no cleanup needed
+                if (!this.previousModel || this.previousModel === newModel) {
+                    this.previousModel = newModel;
+                    return;
+                }
+
+                console.log(`Model switch detected: ${this.previousModel} -> ${newModel}`);
+
+                // Show notification that we're switching models
+                this.showWarning(`Switching from ${this.previousModel} to ${newModel}...`);
+
+                // Add debug information to console
+                console.log('Checking running models before cleanup...');
+
+                try {
+                    // Check if the previous model is running
+                    const runningModels = await this.getRunningModels();
+
+                    if (runningModels.includes(this.previousModel)) {
+                        console.log(`Stopping previous model: ${this.previousModel}`);
+                        const stopped = await this.stopModel(this.previousModel);
+
+                        if (stopped) {
+                            this.showSuccess(`Successfully stopped ${this.previousModel} and switched to ${newModel}`);
+                        } else {
+                            this.showWarning(`Switched to ${newModel}, but failed to stop ${this.previousModel}`);
+                        }
+                    } else {
+                        console.log(`Previous model ${this.previousModel} was not running, no cleanup needed`);
+                        console.log(`Switched to ${newModel}`); // Debug-only feedback
+                    }
+                } catch (error) {
+                    console.error('Error during model switch:', error);
+                    this.showWarning(`Switched to ${newModel}, but encountered an error during cleanup: ${error.message}`);
+                }
+
+                // Update the previous model reference
+                this.previousModel = newModel;
+            }
+
+            // Hamburger Menu Methods
+            toggleHamburgerMenu() {
+                const panel = document.getElementById('hamburgerPanel');
+                const overlay = document.getElementById('hamburgerOverlay');
+
+                if (panel.classList.contains('open')) {
+                    this.closeHamburgerMenu();
+                } else {
+                    panel.classList.add('open');
+                    overlay.classList.add('active');
+                }
+            }
+
+            closeHamburgerMenu() {
+                const panel = document.getElementById('hamburgerPanel');
+                const overlay = document.getElementById('hamburgerOverlay');
+
+                panel.classList.remove('open');
+                overlay.classList.remove('active');
+            }
+
+            // Sidebar functionality
+            initSidebar() {
+                // Restore sidebar state from localStorage
+                const isExpanded = localStorage.getItem('sidebarExpanded') === 'true';
+                const sidebar = document.getElementById('sidebar');
+
+                if (isExpanded) {
+                    sidebar.classList.add('expanded');
+                }
+            }
+
+            toggleSidebar() {
+                const sidebar = document.getElementById('sidebar');
+                sidebar.classList.toggle('expanded');
+
+                // Save the expanded state to localStorage
+                const isExpanded = sidebar.classList.contains('expanded');
+                localStorage.setItem('sidebarExpanded', isExpanded.toString());
+            }
+
+            // Performance Metrics Methods
+            showPerformanceModal() {
+                this.closeHamburgerMenu();
+                document.getElementById('performanceModal').style.display = 'flex';
+                this.isPerformanceModalOpen = true;
+                this.initializePerformanceChart();
+                this.startPerformanceMonitoring();
+            }
+
+            hidePerformanceModal() {
+                document.getElementById('performanceModal').style.display = 'none';
+                this.isPerformanceModalOpen = false;
+                this.stopPerformanceMonitoring();
+                this.destroyPerformanceChart();
+            }
+
+            startPerformanceMonitoring() {
+                // Clear any existing interval
+                if (this.performanceInterval) {
+                    clearInterval(this.performanceInterval);
+                }
+
+                // Update immediately
+                this.updatePerformanceMetrics();
+
+                // Update every 2 seconds
+                this.performanceInterval = setInterval(() => {
+                    if (this.isPerformanceModalOpen) {
+                        this.updatePerformanceMetrics();
+                    }
+                }, 1000);  // Changed to 2000 milliseconds (2 seconds)
+            }
+
+            stopPerformanceMonitoring() {
+                if (this.performanceInterval) {
+                    clearInterval(this.performanceInterval);
+                    this.performanceInterval = null;
+                }
+            }
+
+            async updatePerformanceMetrics() {
+                try {
+                    // Use Electron's IPC to get real system metrics
+                    const metrics = await window.electronAPI.getSystemMetrics();
+
+                    // Calculate changes from previous values
+                    const cpuChange = Math.round(metrics.cpuUsage - this.previousMetrics.cpu);
+                    const memoryChange = (metrics.memoryUsage - this.previousMetrics.memory).toFixed(1);
+                    const loadChange = (metrics.systemLoad - this.previousMetrics.load).toFixed(2);
+
+                    // Store current values for next comparison
+                    this.previousMetrics.cpu = metrics.cpuUsage;
+                    this.previousMetrics.memory = parseFloat(metrics.memoryUsage);
+                    this.previousMetrics.load = parseFloat(metrics.systemLoad);
+
+                    // Update UI elements
+                    document.getElementById('cpuUsage').textContent = `${metrics.cpuUsage}%`;
+                    document.getElementById('cpuChange').textContent = `${cpuChange > 0 ? '+' : ''}${cpuChange}% vs previous`;
+                    document.getElementById('cpuChange').className = `metric-change ${cpuChange >= 0 ? 'positive' : 'negative'}`;
+
+                    document.getElementById('memoryUsage').textContent = `${metrics.memoryUsage} / ${metrics.memoryTotal} GB`;
+                    document.getElementById('memoryChange').textContent = `${memoryChange > 0 ? '+' : ''}${memoryChange} GB vs previous`;
+                    document.getElementById('memoryChange').className = `metric-change ${memoryChange >= 0 ? 'positive' : 'negative'}`;
+
+                    // Network activity requires additional libraries, showing N/A for now
+                    document.getElementById('networkActivity').textContent = metrics.networkActivity;
+                    document.getElementById('networkChange').textContent = `N/A`;
+                    document.getElementById('networkChange').className = `metric-change neutral`;
+
+                    document.getElementById('systemLoad').textContent = `${metrics.systemLoad}`;
+                    document.getElementById('loadChange').textContent = `${loadChange > 0 ? '+' : ''}${loadChange} vs previous`;
+                    document.getElementById('loadChange').className = `metric-change ${loadChange >= 0 ? 'positive' : 'negative'}`;
+
+                    // Generate area chart data
+                    const now = Date.now();
+                    this.performanceData.cpu.push({ time: now, value: metrics.cpuUsage });
+                    this.performanceData.memory.push({ time: now, value: parseFloat(metrics.memoryUsage) });
+                    this.performanceData.load.push({ time: now, value: parseFloat(metrics.systemLoad) });
+
+                    // For the area chart, use CPU data to generate upper and lower bounds
+                    const upperValue = Math.min(metrics.cpuUsage + 5, 100);
+                    const lowerValue = Math.max(metrics.cpuUsage - 10, 0);
+
+                    this.performanceData.upperData.push(upperValue);
+                    this.performanceData.lowerData.push(lowerValue);
+
+                    // Keep only last 30 data points for chart
+                    Object.keys(this.performanceData).forEach(key => {
+                        if (this.performanceData[key].length > 30) {
+                            this.performanceData[key] = this.performanceData[key].slice(-30);
+                        }
+                    });
+
+                    // Update the area chart
+                    this.updatePerformanceChart();
+                } catch (error) {
+                    console.error('Error getting system metrics:', error);
+                    // Fallback to simulated data if there's an error
+                    this.updateSimulatedMetrics();
+                }
+            }
+
+            updateSimulatedMetrics() {
+                // Your existing simulation code here
+                const now = Date.now();
+                const cpuUsage = Math.round(20 + Math.random() * 60);
+                // ... rest of your existing simulation code
+            }
+
+            initializePerformanceChart() {
+                // Wait for the modal to be visible before initializing chart
+                setTimeout(() => {
+                    const canvas = document.getElementById('performanceAreaChart');
+                    if (!canvas) return;
+
+                    const ctx = canvas.getContext('2d');
+
+                    // Destroy existing chart if it exists
+                    if (this.performanceChart) {
+                        this.performanceChart.destroy();
+                    }
+
+                    // Generate initial data
+                    const labels = Array.from({length: 30}, (_, i) => i + 1);
+                    const upperData = Array.from({length: 30}, () => 12 + Math.random() * 6);
+                    const lowerData = Array.from({length: 30}, () => 4 + Math.random() * 4);
+
+                    // Store initial data
+                    this.performanceData.upperData = upperData;
+                    this.performanceData.lowerData = lowerData;
+
+                    // Get Maple theme colors
+                    const colors = this.getMapleChartColors();
+
+                    this.performanceChart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [
+                                {
+                                    label: 'Upper Performance',
+                                    data: upperData,
+                                    backgroundColor: colors.upperBgColor,
+                                    borderColor: colors.upperBorderColor,
+                                    borderWidth: 2,
+                                    fill: '+1',
+                                    tension: 0.4,
+                                    pointRadius: 0,
+                                    pointHoverRadius: 4,
+                                },
+                                {
+                                    label: 'Lower Performance',
+                                    data: lowerData,
+                                    backgroundColor: colors.lowerBgColor,
+                                    borderColor: colors.lowerBorderColor,
+                                    borderWidth: 2,
+                                    fill: 'origin',
+                                    tension: 0.4,
+                                    pointRadius: 0,
+                                    pointHoverRadius: 4,
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            interaction: {
+                                intersect: false,
+                            },
+                            plugins: {
+                                legend: {
+                                    display: false
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    grid: {
+                                        color: colors.gridColor
+                                    },
+                                    ticks: {
+                                        maxTicksLimit: 10,
+                                        color: colors.textColor
+                                    }
+                                },
+                                y: {
+                                    beginAtZero: true,
+                                    suggestedMax: 100,
+                                    grid: {
+                                        color: colors.gridColor
+                                    },
+                                    ticks: {
+                                        color: colors.textColor,
+                                        stepSize: 10
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }, 100);
+            }
+
+            updatePerformanceChart() {
+                if (!this.performanceChart || this.performanceData.upperData.length === 0) return;
+
+                // Update chart data
+                this.performanceChart.data.datasets[0].data = [...this.performanceData.upperData];
+                this.performanceChart.data.datasets[1].data = [...this.performanceData.lowerData];
+
+                // Update labels if needed
+                const labels = Array.from({length: this.performanceData.upperData.length}, (_, i) => i + 1);
+                this.performanceChart.data.labels = labels;
+
+                // Dynamically adjust y-axis based on data values
+                const allValues = [...this.performanceData.upperData, ...this.performanceData.lowerData];
+                const maxValue = Math.max(...allValues);
+
+                // Set appropriate y-axis maximum with some padding
+                let suggestedMax;
+                if (maxValue <= 20) {
+                    suggestedMax = 25;
+                } else if (maxValue <= 50) {
+                    suggestedMax = 60;
+                } else if (maxValue <= 100) {
+                    suggestedMax = 110;
+                } else if (maxValue <= 200) {
+                    suggestedMax = 220;
+                } else {
+                    suggestedMax = Math.ceil(maxValue * 1.1 / 50) * 50; // Round up to nearest 50
+                }
+
+                // Update y-axis configuration
+                this.performanceChart.options.scales.y.suggestedMax = suggestedMax;
+
+                // Adjust step size based on the range
+                if (suggestedMax <= 25) {
+                    this.performanceChart.options.scales.y.ticks.stepSize = 5;
+                } else if (suggestedMax <= 60) {
+                    this.performanceChart.options.scales.y.ticks.stepSize = 10;
+                } else if (suggestedMax <= 110) {
+                    this.performanceChart.options.scales.y.ticks.stepSize = 10;
+                } else {
+                    this.performanceChart.options.scales.y.ticks.stepSize = 20;
+                }
+
+                // Update chart without animation for smooth real-time updates
+                this.performanceChart.update('none');
+            }
+
+            destroyPerformanceChart() {
+                if (this.performanceChart) {
+                    this.performanceChart.destroy();
+                    this.performanceChart = null;
+                }
             }
         }
 
@@ -1455,18 +3431,44 @@
         document.addEventListener('DOMContentLoaded', () => {
             ollamaGUI = new OllamaGUI();
             console.log('Selected model:', ollamaGUI.selectedModel);
+
+            // Process the initial welcome message with markdown
+            setTimeout(() => {
+                if (typeof marked !== 'undefined') {
+                    const welcomeMessage = document.querySelector('#chatMessages .message-content');
+                    if (welcomeMessage) {
+                        const content = welcomeMessage.textContent || welcomeMessage.innerText;
+                        try {
+                            marked.setOptions({
+                                breaks: true,
+                                gfm: true,
+                                sanitize: false,
+                                smartLists: true,
+                                smartypants: false
+                            });
+                            welcomeMessage.innerHTML = marked.parse(content);
+                        } catch (error) {
+                            console.warn('Failed to process welcome message with markdown:', error);
+                        }
+                    }
+                }
+            }, 100);
         });
 
         // Handle modal clicks outside content
         document.addEventListener('click', (e) => {
             const pullModal = document.getElementById('pullModelModal');
             const setupModal = document.getElementById('setupModal');
+            const performanceModal = document.getElementById('performanceModal');
 
             if (e.target === pullModal) {
                 pullModal.style.display = 'none';
             }
             if (e.target === setupModal) {
                 setupModal.style.display = 'none';
+            }
+            if (e.target === performanceModal) {
+                ollamaGUI.hidePerformanceModal();
             }
         });
 
@@ -1475,12 +3477,20 @@
             if (e.key === 'Escape') {
                 const pullModal = document.getElementById('pullModelModal');
                 const setupModal = document.getElementById('setupModal');
+                const performanceModal = document.getElementById('performanceModal');
+                const hamburgerPanel = document.getElementById('hamburgerPanel');
 
                 if (pullModal.style.display === 'flex') {
                     pullModal.style.display = 'none';
                 }
                 if (setupModal.style.display === 'flex') {
                     setupModal.style.display = 'none';
+                }
+                if (performanceModal.style.display === 'flex') {
+                    ollamaGUI.hidePerformanceModal();
+                }
+                if (hamburgerPanel.classList.contains('open')) {
+                    ollamaGUI.closeHamburgerMenu();
                 }
             }
         });
