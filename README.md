@@ -135,7 +135,6 @@ ollama serve
 ollama-gui/
 ├── main.js                    # Electron main process
 ├── ollama-gui.html           # Main application UI with registry testing
-├── test-registry-check.html  # Standalone registry testing utility
 ├── package.json              # Project configuration
 ├── README.md                 # This file
 └── dist/                     # Built applications (after build)
@@ -152,7 +151,6 @@ The application is built with:
 ## Recent Improvements
 
 ### Registry Testing Integration (Latest Update)
-- **Complete Feature Parity** - All functionality from `test-registry-check.html` integrated into main GUI
 - **Enhanced UI** - Registry testing now available directly in the Pull Model modal
 - **Improved Styling** - Light yellow warning messages with dark yellow text for better visibility
 - **Better Contrast** - Enhanced button borders for improved accessibility
