@@ -42,12 +42,6 @@ A modern, minimal desktop interface for Ollama - Local LLM Manager built with El
 
 ## Running the Application
 
-### Quick Start (Windows)
-```bash
-run.bat
-```
-This will start the application with helpful setup reminders.
-
 ### Development Mode
 ```bash
 npm run dev
