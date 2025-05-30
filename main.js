@@ -130,6 +130,33 @@ function createMenu() {
               mainWindow.webContents.executeJavaScript('ollamaGUI.toggleTheme()');
             }
           }
+        },
+        {
+          label: 'Toggle Settings',
+          accelerator: 'CmdOrCtrl+S',
+          click: () => {
+            if (mainWindow) {
+              mainWindow.webContents.executeJavaScript('ollamaGUI.toggleSettings()');
+            }
+          }
+        },
+        {
+          label: 'Focus Model Selector',
+          accelerator: 'CmdOrCtrl+M',
+          click: () => {
+            if (mainWindow) {
+              mainWindow.webContents.executeJavaScript('ollamaGUI.focusModelSelector()');
+            }
+          }
+        },
+        {
+          label: 'Focus Message Input',
+          accelerator: 'CmdOrCtrl+I',
+          click: () => {
+            if (mainWindow) {
+              mainWindow.webContents.executeJavaScript('ollamaGUI.focusMessageInput()');
+            }
+          }
         }
       ]
     },
@@ -143,6 +170,16 @@ function createMenu() {
     {
       label: 'Help',
       submenu: [
+        {
+          label: 'Keyboard Shortcuts',
+          accelerator: 'CmdOrCtrl+/',
+          click: () => {
+            if (mainWindow) {
+              mainWindow.webContents.executeJavaScript('ollamaGUI.showKeyboardShortcuts()');
+            }
+          }
+        },
+        { type: 'separator' },
         {
           label: 'About Ollama GUI',
           click: () => {

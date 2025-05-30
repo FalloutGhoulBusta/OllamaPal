@@ -17,7 +17,7 @@ A modern, minimal desktop interface for Ollama - Local LLM Manager built with El
 - 🎯 **Collapsible Sidebar** - Auto-hide sidebar with hover expansion for better space utilization
 - 🔄 **Real-time Status** - Connection status and model information
 - ⚠️ **Smart Notifications** - Color-coded warnings, errors, and success messages
-- ⌨️ **Keyboard Shortcuts** - Efficient navigation and controls
+- ⌨️ **Keyboard Shortcuts & Accessibility** - Comprehensive keyboard navigation and screen reader support
 - 🛠️ **Setup Assistant** - Guided CORS configuration with dark theme support
 - 🎨 **Font Customization** - Multiple font options with dropdown selector
 - 🌈 **Animated SVG Logo** - Auto-inverting colors every 2 seconds for dynamic visual appeal
@@ -185,14 +185,81 @@ The application includes comprehensive model registry validation to ensure model
 - ⚠️ **Warning** - Model not found (light yellow background with dark yellow text)
 - ❌ **Error** - Network or parsing error (red background)
 
-## Keyboard Shortcuts
+## Keyboard Shortcuts & Accessibility
 
-- `Ctrl/Cmd + N` - New Chat
-- `Ctrl/Cmd + D` - Toggle Dark/Light Mode
-- `Ctrl/Cmd + Q` - Quit Application
-- `Enter` - Send message (chat) / Test registry (model input)
-- `Shift + Enter` - New line in message
-- `Escape` - Close modals
+The application features comprehensive keyboard navigation and screen reader support, making it accessible to all users regardless of their abilities or preferred input methods.
+
+### 🎯 **Keyboard Shortcuts**
+
+#### **Chat & Messaging**
+- `Ctrl/Cmd + Enter` - Send message to AI assistant
+- `Shift + Enter` - New line in message input
+- `Ctrl/Cmd + N` - Clear chat (start new conversation)
+
+#### **Interface Controls**
+- `Ctrl/Cmd + D` - Toggle dark/light mode
+- `Ctrl/Cmd + S` - Toggle settings panel
+- `Ctrl/Cmd + M` - Focus model selector dropdown
+- `Ctrl/Cmd + I` - Focus message input area
+
+#### **Navigation**
+- `Tab` - Navigate forward through elements
+- `Shift + Tab` - Navigate backward through elements
+- `Arrow Keys` - Navigate dropdown options
+- `Enter` / `Space` - Activate buttons and options
+- `Escape` - Close modals and dropdowns
+
+#### **Help & Information**
+- `Ctrl/Cmd + /` - Show keyboard shortcuts help modal
+- `Ctrl/Cmd + Q` - Quit application
+
+### ♿ **Accessibility Features**
+
+#### **Screen Reader Support**
+- **ARIA Labels** - Comprehensive labeling for all interactive elements
+- **ARIA Roles** - Proper semantic markup (navigation, main, dialog, etc.)
+- **ARIA States** - Dynamic state announcements (expanded, selected, etc.)
+- **Live Regions** - Real-time announcements for important changes
+- **Screen Reader Announcements** - Context-aware notifications for actions
+
+#### **Keyboard Navigation**
+- **Full Keyboard Access** - Every feature accessible without a mouse
+- **Focus Management** - Logical tab order and visible focus indicators
+- **Focus Trapping** - Proper focus containment in modals and dropdowns
+- **Skip Links** - Quick navigation to main content for screen readers
+
+#### **Visual Accessibility**
+- **Focus Indicators** - Clear orange outline for focused elements
+- **High Contrast** - Proper color contrast ratios for readability
+- **Semantic Markup** - Proper HTML structure for assistive technologies
+- **Alternative Text** - Descriptive labels for images and icons
+
+#### **Motor Accessibility**
+- **Large Touch Targets** - Appropriately sized interactive elements
+- **Keyboard Alternatives** - All mouse actions have keyboard equivalents
+- **No Time Limits** - No timed interactions that could cause issues
+- **Error Prevention** - Clear feedback and confirmation for destructive actions
+
+### 📖 **Keyboard Shortcuts Help**
+
+Access the comprehensive keyboard shortcuts help by:
+1. **Keyboard**: Press `Ctrl/Cmd + /`
+2. **Menu**: Click hamburger menu → "⌨️ Keyboard Shortcuts"
+3. **Application Menu**: Help → Keyboard Shortcuts
+
+The help modal includes:
+- **Categorized shortcuts** organized by function
+- **Visual key representations** showing exact key combinations
+- **Searchable content** for quick reference
+- **Keyboard navigation** within the help modal itself
+
+### 🔧 **Accessibility Standards Compliance**
+
+The application follows **WCAG 2.1 guidelines** and includes:
+- **Level AA compliance** for color contrast and keyboard navigation
+- **Semantic HTML** structure for proper screen reader interpretation
+- **Progressive enhancement** ensuring functionality without JavaScript
+- **Responsive design** that works across different devices and zoom levels
 
 ## Configuration
 
@@ -239,7 +306,16 @@ The application is built with:
 
 ## Recent Improvements
 
-### Mobile Responsiveness & Performance Monitoring (Latest Update)
+### Keyboard Shortcuts & Accessibility (Latest Update)
+- **Comprehensive Keyboard Navigation** - Full keyboard access to all features and functions
+- **Screen Reader Support** - Complete ARIA implementation with live regions and announcements
+- **Keyboard Shortcuts Help Modal** - Interactive help system accessible via Ctrl+/ or menu
+- **Focus Management** - Proper focus trapping in modals and logical tab order throughout
+- **WCAG 2.1 Compliance** - Level AA accessibility standards for inclusive design
+- **Visual Focus Indicators** - Clear orange outline for keyboard navigation visibility
+- **Motor Accessibility** - Large touch targets and keyboard alternatives for all actions
+
+### Mobile Responsiveness & Performance Monitoring
 - **Full Mobile Support** - Comprehensive responsive design with touch-friendly controls
 - **Real-time Performance Dashboard** - Live system metrics with beautiful charts and accurate readings
 - **Collapsible Sidebar** - Auto-hide sidebar with hover expansion for better space utilization
@@ -271,6 +347,10 @@ The application is built with:
 - **Smart Notifications** - Context-aware warning vs error messages
 
 ### Key Features Added
+- **Accessibility & Keyboard Navigation** - Complete keyboard shortcuts and screen reader support
+- **ARIA Implementation** - Comprehensive labeling, roles, and live regions for assistive technologies
+- **Focus Management** - Proper focus trapping, indicators, and logical tab order
+- **Keyboard Shortcuts Help** - Interactive modal with categorized shortcuts and visual key representations
 - Full mobile responsiveness with touch-friendly controls
 - Real-time performance monitoring dashboard with system metrics
 - Animated SVG logo with automatic color inversion
@@ -322,11 +402,21 @@ The application is built with:
 - **Parsing errors** suggest invalid model name format
 - Use the Test Suite to verify registry connectivity
 
+### Accessibility & Keyboard Navigation Issues
+- **Keyboard shortcuts not working** - Ensure focus is not trapped in an input field (except Ctrl+Enter)
+- **Screen reader not announcing changes** - Check if ARIA live regions are supported in your browser
+- **Focus indicators not visible** - Verify CSS custom properties are supported for the orange outline
+- **Tab navigation skipping elements** - Some elements may have `tabindex="-1"` intentionally for better UX
+- **Keyboard shortcuts help not opening** - Try using the hamburger menu → "⌨️ Keyboard Shortcuts" as alternative
+- **ARIA attributes not working** - Ensure you're using a modern browser with full ARIA support
+- **Focus trapped in modal** - Use Tab/Shift+Tab to navigate within modal, Escape to close
+
 ### Build Issues
 - Make sure Node.js version is 16 or higher
 - Clear node_modules and reinstall: `rm -rf node_modules && npm install`
 - Check that all dependencies are installed
 - For mobile testing, use browser developer tools to simulate mobile devices
+- For accessibility testing, use browser developer tools accessibility panel or screen reader software
 
 ## Contributing
 
