@@ -103,7 +103,7 @@
 **User Benefit**: Improved accessibility and power user efficiency  
 **Complexity**: Moderate  
 
-## 12. Advanced Message Formatting
+## ~~12. Advanced Message Formatting~~
 **Description**: Markdown rendering, syntax highlighting, LaTeX support  
 **Implementation**:
 - Integrate markdown parser (`marked.js`)  
