@@ -8,6 +8,46 @@
     <script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
     <!-- Chart.js for performance charts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <!-- MathJax for LaTeX rendering -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                processEscapes: true,
+                processEnvironments: true
+            },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+                ignoreHtmlClass: 'tex2jax_ignore',
+                processHtmlClass: 'tex2jax_process'
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <!-- Additional language support for highlight.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/java.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/cpp.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/c.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/sql.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/json.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/markdown.min.js"></script>
+    <!-- Additional language support for highlight.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/php.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/ruby.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/go.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/rust.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/swift.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/kotlin.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/dart.min.js"></script>
     <style>
         :root {
             /* Maple Light Theme - Warm autumn colors */
@@ -1907,6 +1947,149 @@
             text-align: center;
         }
 
+        /* Syntax highlighting styles */
+        .hljs {
+            background: var(--bg-secondary) !important;
+            color: var(--text-primary) !important;
+            border-radius: 6px;
+            padding: 12px !important;
+            font-family: 'Courier New', 'Monaco', 'Menlo', monospace !important;
+            font-size: 0.9em !important;
+            line-height: 1.4 !important;
+            overflow-x: auto;
+            border: 1px solid var(--border-color);
+        }
+
+        /* Dark theme syntax highlighting adjustments */
+        [data-theme="dark"] .hljs {
+            background: var(--bg-tertiary) !important;
+            border-color: var(--border-color);
+        }
+
+        /* Inline code with syntax highlighting */
+        .message-bubble code.hljs {
+            display: inline;
+            padding: 2px 6px !important;
+            border-radius: 4px;
+            font-size: 0.9em !important;
+            border: 1px solid var(--border-color);
+        }
+
+        /* Block code with syntax highlighting */
+        .message-bubble pre code.hljs {
+            display: block;
+            padding: 12px !important;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+
+        /* Code block container with header */
+        .code-block-container {
+            margin: 12px 0;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+        }
+
+        .code-block-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border-color);
+            font-size: 12px;
+        }
+
+        .code-language {
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .copy-code-btn {
+            background: var(--maple-orange);
+            border: none;
+            border-radius: 4px;
+            padding: 4px 8px;
+            color: white;
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            outline: none;
+        }
+
+        .copy-code-btn:hover {
+            background: var(--maple-red);
+            transform: translateY(-1px);
+        }
+
+        .copy-code-btn:active {
+            transform: translateY(0);
+        }
+
+        /* Code block container pre styling */
+        .code-block-container pre {
+            margin: 0 !important;
+            border-radius: 0 !important;
+            border: none !important;
+        }
+
+        .code-block-container pre code {
+            border-radius: 0 !important;
+            border: none !important;
+        }
+
+        /* Dark theme code block adjustments */
+        [data-theme="dark"] .code-block-container {
+            background: var(--bg-tertiary);
+            border-color: var(--border-color);
+        }
+
+        [data-theme="dark"] .code-block-header {
+            background: var(--bg-secondary);
+            border-bottom-color: var(--border-color);
+        }
+
+        [data-theme="dark"] .code-language {
+            color: var(--text-secondary);
+        }
+
+        /* MathJax styling */
+        .MathJax {
+            font-size: 1.1em !important;
+        }
+
+        /* Math display styling */
+        .message-bubble .MathJax_Display {
+            margin: 12px 0 !important;
+            text-align: center;
+        }
+
+        /* Inline math styling */
+        .message-bubble .MathJax {
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        /* Override highlight.js theme for better integration */
+        .hljs-keyword { color: var(--maple-orange) !important; }
+        .hljs-string { color: #22863a !important; }
+        .hljs-comment { color: var(--text-muted) !important; font-style: italic; }
+        .hljs-number { color: var(--maple-red) !important; }
+        .hljs-function { color: var(--maple-brown) !important; }
+        .hljs-variable { color: var(--text-primary) !important; }
+
+        /* Dark theme syntax highlighting colors */
+        [data-theme="dark"] .hljs-keyword { color: var(--maple-yellow) !important; }
+        [data-theme="dark"] .hljs-string { color: #98d982 !important; }
+        [data-theme="dark"] .hljs-comment { color: var(--text-muted) !important; }
+        [data-theme="dark"] .hljs-number { color: var(--maple-orange) !important; }
+        [data-theme="dark"] .hljs-function { color: var(--maple-yellow) !important; }
+
         /* Focus indicators for accessibility */
         .focus-visible,
         *:focus-visible {
@@ -2085,11 +2268,14 @@
                         <div class="message-bubble">
                             Welcome to Ollama GUI! Select a model from the dropdown above to start chatting. You can also upload images when using vision-enabled models like LLaVA.
 
-                            **Markdown rendering is enabled** - LLM responses will be formatted with support for:
+                            **Enhanced formatting is now enabled** with support for:
                             - **Bold** and *italic* text
-                            - `inline code` and code blocks
+                            - `inline code` and code blocks with **syntax highlighting**
+                            - **LaTeX math**: inline $E = mc^2$ and display $$\int_{-\infty}^{\infty} e^{-x^2} dx = \sqrt{\pi}$$
                             - Lists, tables, and blockquotes
                             - Headers and links
+
+                            Try asking for code examples or mathematical equations!
                         </div>
                     </div>
                 </div>
@@ -2432,8 +2618,31 @@
                 this.initSidebar();
                 this.initKeyboardShortcuts();
                 this.initAccessibility();
+                this.initLibraries();
                 await this.checkConnection();
                 await this.loadModels();
+            }
+
+            initLibraries() {
+                // Initialize Highlight.js
+                if (typeof hljs !== 'undefined') {
+                    hljs.highlightAll();
+                    console.log('Highlight.js initialized');
+                }
+
+                // MathJax is initialized automatically via the configuration script
+                // We'll process math when adding messages
+                console.log('LaTeX support enabled via MathJax');
+
+                // Initialize language detection patterns
+                this.initLanguageDetection();
+            }
+
+            initLanguageDetection() {
+                // Initialize highlight.js for syntax highlighting
+                // Ollama models automatically prefix their code responses with proper language identifiers
+                // (e.g., ```python, ```javascript, ```mermaid), so we rely on highlight.js built-in detection
+                console.log('Highlight.js language detection initialized - relying on Ollama model language prefixes');
             }
 
             bindEvents() {
@@ -2881,7 +3090,7 @@
                     imageHtml = `<img src="${image}" alt="Uploaded image" class="uploaded-image" style="display: block; margin: 8px 0; border-radius: 8px; max-width: 200px;">`;
                 }
 
-                // Process content with markdown
+                // Process content with markdown and enhanced code block detection
                 let processedContent;
                 if (typeof marked !== 'undefined') {
                     try {
@@ -2893,6 +3102,8 @@
                             smartLists: true,
                             smartypants: false
                         });
+
+                        // Parse markdown content directly - Ollama models provide proper language prefixes
                         processedContent = marked.parse(content);
                     } catch (error) {
                         console.warn('Markdown parsing failed, falling back to plain text:', error);
@@ -2913,10 +3124,124 @@
                 `;
 
                 messagesContainer.appendChild(messageDiv);
+
+                // Apply syntax highlighting to code blocks
+                this.applySyntaxHighlighting(messageDiv);
+
+                // Process LaTeX math expressions
+                this.processLatexMath(messageDiv);
+
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
                 // Announce new messages to screen readers
                 this.announceToScreenReader(`New ${role === 'user' ? 'user' : 'assistant'} message added`);
+            }
+
+            applySyntaxHighlighting(messageElement) {
+                if (typeof hljs !== 'undefined') {
+                    // Find all code blocks in the message
+                    const codeBlocks = messageElement.querySelectorAll('pre code');
+                    codeBlocks.forEach(block => {
+                        // Apply syntax highlighting using highlight.js built-in language detection
+                        // Ollama models prefix code blocks with language identifiers (e.g., ```python)
+                        // which are automatically parsed by marked.js and highlight.js
+                        hljs.highlightElement(block);
+
+                        // Add code block container with header if language is detected
+                        if (block.className.includes('language-') && !block.className.includes('language-undefined')) {
+                            const languageMatch = block.className.match(/language-(\w+)/);
+                            if (languageMatch) {
+                                this.wrapCodeBlockWithHeader(block, languageMatch[1]);
+                            }
+                        }
+                    });
+
+                    // Also highlight inline code if it looks like code
+                    const inlineCode = messageElement.querySelectorAll('code:not(pre code)');
+                    inlineCode.forEach(code => {
+                        // Only highlight if it looks like it might be code (contains certain patterns)
+                        const text = code.textContent;
+                        if (this.looksLikeCode(text)) {
+                            hljs.highlightElement(code);
+                        }
+                    });
+                }
+            }
+
+            // Wrap code block with header showing language and copy button
+            wrapCodeBlockWithHeader(codeElement, language) {
+                const preElement = codeElement.parentElement;
+                if (preElement && preElement.tagName === 'PRE' && !preElement.parentElement.classList.contains('code-block-container')) {
+                    // Create container
+                    const container = document.createElement('div');
+                    container.className = 'code-block-container';
+
+                    // Create header
+                    const header = document.createElement('div');
+                    header.className = 'code-block-header';
+                    header.innerHTML = `
+                        <span class="code-language">${language}</span>
+                        <button class="copy-code-btn" onclick="ollamaGUI.copyCode(this)">Copy</button>
+                    `;
+
+                    // Wrap the pre element
+                    preElement.parentNode.insertBefore(container, preElement);
+                    container.appendChild(header);
+                    container.appendChild(preElement);
+                }
+            }
+
+            // Copy code to clipboard function
+            copyCode(button) {
+                const codeBlock = button.closest('.code-block-container').querySelector('code');
+                const code = codeBlock.textContent;
+
+                navigator.clipboard.writeText(code).then(() => {
+                    const originalText = button.textContent;
+                    button.textContent = 'Copied!';
+                    button.style.background = 'var(--maple-yellow)';
+                    button.style.color = 'var(--maple-brown)';
+
+                    setTimeout(() => {
+                        button.textContent = originalText;
+                        button.style.background = '';
+                        button.style.color = '';
+                    }, 2000);
+                }).catch(err => {
+                    console.error('Failed to copy code:', err);
+                    button.textContent = 'Copy failed';
+                    setTimeout(() => {
+                        button.textContent = 'Copy';
+                    }, 2000);
+                });
+            }
+
+            looksLikeCode(text) {
+                // Simple heuristic to determine if inline code should be highlighted
+                const codePatterns = [
+                    /function\s+\w+\s*\(/,  // function definitions
+                    /\w+\s*=\s*\w+/,       // assignments
+                    /import\s+\w+/,        // imports
+                    /console\.log/,        // console.log
+                    /\w+\.\w+\(/,         // method calls
+                    /\{[\s\S]*\}/,        // objects/blocks
+                    /\[[\s\S]*\]/,        // arrays
+                    /\/\*[\s\S]*\*\//,    // block comments
+                    /\/\/.*$/m,           // line comments
+                ];
+
+                return codePatterns.some(pattern => pattern.test(text)) && text.length > 10;
+            }
+
+            processLatexMath(messageElement) {
+                if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
+                    // Process math in the new message element
+                    MathJax.typesetPromise([messageElement]).then(() => {
+                        console.log('LaTeX math processed for new message');
+                    }).catch((err) => {
+                        console.warn('MathJax processing failed:', err);
+                    });
+                }
             }
 
             clearChat() {
@@ -2928,10 +3253,18 @@
                             <div class="role-badge assistant">AI</div>
                         </div>
                         <div class="message-bubble">
-                            Chat cleared! Ready for a new conversation. **Markdown rendering is enabled** - you can use formatting like *italic*, **bold**, \`code\`, and more!
+                            Chat cleared! Ready for a new conversation. **Enhanced formatting is enabled** with support for **syntax highlighting** and **LaTeX math**: $E = mc^2$. Try asking for code examples or mathematical equations!
                         </div>
                     </div>
                 `;
+
+                // Process the welcome message with LaTeX and syntax highlighting
+                setTimeout(() => {
+                    const welcomeMessage = messagesContainer.querySelector('.message.assistant');
+                    if (welcomeMessage) {
+                        this.processLatexMath(welcomeMessage);
+                    }
+                }, 100);
             }
 
             handleImageUpload(file) {
@@ -3976,12 +4309,13 @@
             ollamaGUI = new OllamaGUI();
             console.log('Selected model:', ollamaGUI.selectedModel);
 
-            // Process the initial welcome message with markdown
+            // Process the initial welcome message with markdown, LaTeX, and syntax highlighting
             setTimeout(() => {
-                if (typeof marked !== 'undefined') {
-                    const welcomeMessage = document.querySelector('#chatMessages .message-content');
-                    if (welcomeMessage) {
-                        const content = welcomeMessage.textContent || welcomeMessage.innerText;
+                const welcomeMessage = document.querySelector('#chatMessages .message.assistant');
+                if (welcomeMessage) {
+                    const messageBubble = welcomeMessage.querySelector('.message-bubble');
+                    if (messageBubble && typeof marked !== 'undefined') {
+                        const content = messageBubble.textContent || messageBubble.innerText;
                         try {
                             marked.setOptions({
                                 breaks: true,
@@ -3990,13 +4324,17 @@
                                 smartLists: true,
                                 smartypants: false
                             });
-                            welcomeMessage.innerHTML = marked.parse(content);
+                            messageBubble.innerHTML = marked.parse(content);
+
+                            // Apply syntax highlighting and LaTeX processing
+                            ollamaGUI.applySyntaxHighlighting(welcomeMessage);
+                            ollamaGUI.processLatexMath(welcomeMessage);
                         } catch (error) {
-                            console.warn('Failed to process welcome message with markdown:', error);
+                            console.warn('Failed to process welcome message:', error);
                         }
                     }
                 }
-            }, 100);
+            }, 500); // Increased timeout to ensure libraries are loaded
         });
 
         // Handle modal clicks outside content
